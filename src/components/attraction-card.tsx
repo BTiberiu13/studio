@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -39,7 +40,7 @@ export function AttractionCard({ attraction, onAddItem, isAdded }: AttractionCar
           className="w-full"
         >
           {isAdded ? <CheckCircle /> : <PlusCircle />}
-          <span>{isAdded ? "Added to Itinerary" : "Add to Itinerary"}</span>
+          <span>{isAdded ? "Added to to-do list" : "Add to to-do list"}</span>
         </Button>
       </CardFooter>
     </Card>

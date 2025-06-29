@@ -34,7 +34,7 @@ export default function Home() {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Could not load your saved itinerary.",
+        description: "Could not load your saved to-do list.",
       });
     }
   }, [toast]);
@@ -77,20 +77,20 @@ export default function Home() {
       toast({
         variant: "destructive",
         title: "Save Failed",
-        description: "Could not update your itinerary.",
+        description: "Could not update your to-do list.",
       });
     }
   };
 
   const addToItinerary = (item: Attraction) => {
     if (itinerary.some(i => i.title === item.title)) {
-      toast({ title: "Already in Itinerary", description: `${item.title} is already on your list.` });
+      toast({ title: "Already on to-do list", description: `${item.title} is already on your list.` });
       return;
     }
     const newItineraryItem = { ...item, id: `${item.title}-${Date.now()}` };
     updateItinerary([...itinerary, newItineraryItem]);
     toast({
-      title: "Added to Itinerary",
+      title: "Added to to-do list",
       description: `${item.title} has been added.`,
     });
   };
@@ -100,7 +100,7 @@ export default function Home() {
     if(removedItem) {
       updateItinerary(itinerary.filter(item => item.id !== id));
       toast({
-        title: "Removed from Itinerary",
+        title: "Removed from to-do list",
         description: `${removedItem.title} has been removed.`,
       });
     }
@@ -109,7 +109,7 @@ export default function Home() {
   const clearItinerary = () => {
     updateItinerary([]);
     toast({
-      title: "Itinerary Cleared",
+      title: "To-do list Cleared",
     });
   };
 
@@ -209,10 +209,10 @@ export default function Home() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
-                  <span className="flex items-center gap-2"><ClipboardList /> My Itinerary</span>
+                  <span className="flex items-center gap-2"><ClipboardList /> My to do list</span>
                   <Badge>{itinerary.length}</Badge>
                 </CardTitle>
-                <CardDescription>The places you want to visit.</CardDescription>
+                <CardDescription>The items on your to-do list.</CardDescription>
               </CardHeader>
               <CardContent>
                 {itinerary.length > 0 ? (
@@ -232,7 +232,7 @@ export default function Home() {
                   </div>
                 ) : (
                   <div className="text-center py-10 text-muted-foreground border border-dashed rounded-lg">
-                    <p>Your itinerary is empty.</p>
+                    <p>Your to-do list is empty.</p>
                     <p className="text-sm">Add items from the search results.</p>
                   </div>
                 )}
@@ -241,7 +241,7 @@ export default function Home() {
                  <CardFooter>
                    <Button variant="destructive" onClick={clearItinerary} className="w-full">
                      <Trash2 />
-                     <span>Clear Itinerary</span>
+                     <span>Clear to-do list</span>
                    </Button>
                  </CardFooter>
               )}
