@@ -20,6 +20,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,6 +41,9 @@ export default function Home() {
   
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
+  const [isReplaceConfirmOpen, setIsReplaceConfirmOpen] = useState(false);
+  const [listToReplaceOnConfirm, setListToReplaceOnConfirm] = useState<{ id: string; name: string } | null>(null);
+
   const [newListName, setNewListName] = useState("");
   const [selectedListToReplace, setSelectedListToReplace] = useState("");
   const [saveDialogActiveTab, setSaveDialogActiveTab] = useState("new");
@@ -175,15 +179,14 @@ export default function Home() {
       toast({ variant: "destructive", title: "Invalid Name", description: "Please enter a name for your list." });
       return;
     }
+    
     const existingList = savedLists.find(list => list.name === trimmedListName);
     if (existingList) {
-      toast({ 
-        variant: "destructive", 
-        title: "Name Already Exists", 
-        description: `A list named "${trimmedListName}" already exists. Please use a different name or replace the existing list.` 
-      });
+      setListToReplaceOnConfirm({ id: existingList.id, name: existingList.name });
+      setIsReplaceConfirmOpen(true);
       return;
     }
+
     const newList: SavedList = { itinerary, searchResults };
     try {
       const savedDoc = await saveList(user.uid, trimmedListName, newList);
@@ -194,6 +197,36 @@ export default function Home() {
     } catch (error) {
       console.error("Error saving list:", error);
       toast({ variant: "destructive", title: "Save Failed", description: "Could not save your list." });
+    }
+  };
+
+  const handleConfirmReplace = async () => {
+    if (!user || !listToReplaceOnConfirm) {
+      toast({ variant: "destructive", title: "Error", description: "No list selected for replacement." });
+      return;
+    }
+
+    const newListData: SavedList = { itinerary, searchResults };
+    try {
+      await updateList(user.uid, listToReplaceOnConfirm.id, listToReplaceOnConfirm.name, newListData);
+      
+      setSavedLists(prev => prev.map(l => 
+        l.id === listToReplaceOnConfirm.id 
+          ? { ...l, name: listToReplaceOnConfirm.name, ...newListData } 
+          : l
+      ));
+
+      toast({ title: "List Replaced", description: `List "${listToReplaceOnConfirm.name}" has been updated.` });
+      
+      setIsSaveDialogOpen(false);
+      setNewListName("");
+      setSelectedListToReplace("");
+    } catch (error) {
+      console.error("Error replacing list:", error);
+      toast({ variant: "destructive", title: "Update Failed", description: "Could not update the list." });
+    } finally {
+        setIsReplaceConfirmOpen(false);
+        setListToReplaceOnConfirm(null);
     }
   };
 
@@ -520,6 +553,21 @@ export default function Home() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      <AlertDialog open={isReplaceConfirmOpen} onOpenChange={setIsReplaceConfirmOpen}>
+          <AlertDialogContent>
+              <AlertDialogHeader>
+                  <AlertDialogTitle>List name already exists</AlertDialogTitle>
+                  <AlertDialogDescription>
+                      A list named "{listToReplaceOnConfirm?.name}" already exists. Would you like to replace it with your current to-do list?
+                  </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                  <AlertDialogCancel onClick={() => setListToReplaceOnConfirm(null)}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleConfirmReplace}>Replace</AlertDialogAction>
+              </AlertDialogFooter>
+          </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
