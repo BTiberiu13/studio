@@ -74,6 +74,7 @@ export default function Home() {
   const onSearch = async (data: SearchActionInput) => {
     setIsLoading(true);
     setSearchResults([]);
+    setItinerary([]);
     setSelectedCategory("All");
     const result = await handleSearch(data);
     setIsLoading(false);
