@@ -13,6 +13,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
@@ -33,6 +34,8 @@ export default function Home() {
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
   const [newListName, setNewListName] = useState("");
+  const [isConfirmReplaceDialogOpen, setIsConfirmReplaceDialogOpen] = useState(false);
+  const [listToReplace, setListToReplace] = useState("");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -144,20 +147,34 @@ export default function Home() {
   };
 
   const handleSaveList = () => {
-    if (!newListName.trim()) {
+    const trimmedListName = newListName.trim();
+    if (!trimmedListName) {
       toast({ variant: "destructive", title: "Invalid Name", description: "Please enter a name for your list." });
       return;
     }
-    if (savedLists[newListName]) {
-      toast({ variant: "destructive", title: "Name Exists", description: `A list named "${newListName}" already exists.` });
+    if (savedLists[trimmedListName]) {
+      setListToReplace(trimmedListName);
+      setIsConfirmReplaceDialogOpen(true);
       return;
     }
     const newList: SavedList = { itinerary, searchResults };
-    const newSavedLists = { ...savedLists, [newListName]: newList };
+    const newSavedLists = { ...savedLists, [trimmedListName]: newList };
     updateSavedLists(newSavedLists);
-    toast({ title: "List Saved!", description: `Your to-do list "${newListName}" has been saved.` });
+    toast({ title: "List Saved!", description: `Your to-do list "${trimmedListName}" has been saved.` });
     setIsSaveDialogOpen(false);
     setNewListName("");
+  };
+
+  const handleConfirmReplace = () => {
+    const newList: SavedList = { itinerary, searchResults };
+    const newSavedLists = { ...savedLists, [listToReplace]: newList };
+    updateSavedLists(newSavedLists);
+    toast({ title: "List Replaced", description: `List "${listToReplace}" has been updated.` });
+    
+    setIsConfirmReplaceDialogOpen(false);
+    setIsSaveDialogOpen(false);
+    setNewListName("");
+    setListToReplace("");
   };
 
   const handleLoadList = (listName: string) => {
@@ -346,7 +363,10 @@ export default function Home() {
           </div>
         </div>
       </main>
-      <Dialog open={isSaveDialogOpen} onOpenChange={setIsSaveDialogOpen}>
+      <Dialog open={isSaveDialogOpen} onOpenChange={(open) => {
+        setIsSaveDialogOpen(open)
+        if (!open) setNewListName("");
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Save Your To-Do List</DialogTitle>
@@ -374,6 +394,25 @@ export default function Home() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <AlertDialog open={isConfirmReplaceDialogOpen} onOpenChange={(open) => {
+        setIsConfirmReplaceDialogOpen(open)
+        if (!open) {
+          setListToReplace("");
+        }
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Replace List?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A list named "{listToReplace}" already exists. Do you want to replace it?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmReplace}>Replace</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
