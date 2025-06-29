@@ -59,6 +59,12 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
         case 'auth/account-exists-with-different-credential':
           setError("An account already exists with the same email address but different sign-in credentials. Sign in using a provider associated with this email address.");
           break;
+        case 'auth/unauthorized-domain': {
+            const unauthorizedDomainMessage = `This domain (${window.location.hostname}) is not authorized. Please add it to the 'Authorized domains' list in your Firebase Authentication settings.`;
+            console.error("Authentication Error:", unauthorizedDomainMessage);
+            setError(unauthorizedDomainMessage);
+            break;
+        }
         default:
           setError(authError.message || "An unexpected error occurred.");
           break;
