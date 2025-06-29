@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import Link from "next/link";
 import { handleSearch, type SearchActionInput } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
 import type { Attraction, ItineraryItem } from "@/types";
@@ -40,6 +41,17 @@ export default function Home() {
   const [listToReplace, setListToReplace] = useState("");
   const [selectedListToReplace, setSelectedListToReplace] = useState("");
   const { toast } = useToast();
+
+  const handleReset = () => {
+    setSearchResults([]);
+    setItinerary([]);
+    setSelectedCategory("All");
+    try {
+      localStorage.removeItem("wanderTestCurrentState");
+    } catch (error) {
+      console.error("Failed to clear current state from localStorage", error);
+    }
+  };
 
   useEffect(() => {
     try {
@@ -231,12 +243,12 @@ export default function Home() {
     <div className="min-h-screen bg-background text-foreground font-body">
       <header className="bg-primary/95 text-primary-foreground shadow-lg backdrop-blur-sm sticky top-0 z-40">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
-          <div className="flex items-center gap-2">
+          <Link href="/" onClick={handleReset} className="flex items-center gap-2 no-underline text-primary-foreground">
             <Map className="h-8 w-8" />
             <h1 className="text-2xl md:text-3xl font-bold font-headline">
               WanderTest
             </h1>
-          </div>
+          </Link>
           <div className="flex items-center gap-4">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -462,3 +474,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
