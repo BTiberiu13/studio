@@ -20,10 +20,15 @@ import { Label } from "@/components/ui/label";
 import { ClipboardList, Trash2, X, Pilcrow, Map, ListFilter, Lightbulb, Save, BookMarked } from "lucide-react";
 import { getCategoryIcon } from "@/lib/icons";
 
+type SavedList = {
+  itinerary: ItineraryItem[];
+  searchResults: Attraction[];
+};
+
 export default function Home() {
   const [searchResults, setSearchResults] = useState<Attraction[]>([]);
   const [itinerary, setItinerary] = useState<ItineraryItem[]>([]);
-  const [savedLists, setSavedLists] = useState<{ [name: string]: ItineraryItem[] }>({});
+  const [savedLists, setSavedLists] = useState<{ [name: string]: SavedList }>({});
   const [isLoading, setIsLoading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
@@ -32,9 +37,11 @@ export default function Home() {
 
   useEffect(() => {
     try {
-      const savedItinerary = localStorage.getItem("wanderTestItinerary");
-      if (savedItinerary) {
-        setItinerary(JSON.parse(savedItinerary));
+      const currentStateData = localStorage.getItem("wanderTestCurrentState");
+      if (currentStateData) {
+        const { itinerary, searchResults } = JSON.parse(currentStateData);
+        setItinerary(itinerary || []);
+        setSearchResults(searchResults || []);
       }
       const savedListsData = localStorage.getItem("wanderTestSavedLists");
       if (savedListsData) {
@@ -49,6 +56,14 @@ export default function Home() {
       });
     }
   }, [toast]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("wanderTestCurrentState", JSON.stringify({ itinerary, searchResults }));
+    } catch (error) {
+      console.error("Failed to save current state to localStorage", error);
+    }
+  }, [itinerary, searchResults]);
 
   const onSearch = async (data: SearchActionInput) => {
     setIsLoading(true);
@@ -81,16 +96,6 @@ export default function Home() {
 
   const updateItinerary = (newItinerary: ItineraryItem[]) => {
     setItinerary(newItinerary);
-    try {
-      localStorage.setItem("wanderTestItinerary", JSON.stringify(newItinerary));
-    } catch (error) {
-      console.error("Failed to save itinerary to localStorage", error);
-      toast({
-        variant: "destructive",
-        title: "Save Failed",
-        description: "Could not update your to-do list.",
-      });
-    }
   };
 
   const addToItinerary = (item: Attraction) => {
@@ -124,7 +129,7 @@ export default function Home() {
     });
   };
   
-  const updateSavedLists = (newSavedLists: { [name: string]: ItineraryItem[] }) => {
+  const updateSavedLists = (newSavedLists: { [name: string]: SavedList }) => {
     setSavedLists(newSavedLists);
     try {
       localStorage.setItem("wanderTestSavedLists", JSON.stringify(newSavedLists));
@@ -147,7 +152,8 @@ export default function Home() {
       toast({ variant: "destructive", title: "Name Exists", description: `A list named "${newListName}" already exists.` });
       return;
     }
-    const newSavedLists = { ...savedLists, [newListName]: itinerary };
+    const newList: SavedList = { itinerary, searchResults };
+    const newSavedLists = { ...savedLists, [newListName]: newList };
     updateSavedLists(newSavedLists);
     toast({ title: "List Saved!", description: `Your to-do list "${newListName}" has been saved.` });
     setIsSaveDialogOpen(false);
@@ -157,7 +163,9 @@ export default function Home() {
   const handleLoadList = (listName: string) => {
     const listToLoad = savedLists[listName];
     if (listToLoad) {
-      updateItinerary(listToLoad);
+      setItinerary(listToLoad.itinerary);
+      setSearchResults(listToLoad.searchResults);
+      setSelectedCategory("All");
       toast({ title: "List Loaded", description: `"${listName}" is now your active to-do list.` });
     }
   };
@@ -369,5 +377,3 @@ export default function Home() {
     </div>
   );
 }
-
-    
