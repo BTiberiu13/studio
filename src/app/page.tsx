@@ -5,10 +5,15 @@ import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { handleSearch, type SearchActionInput } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
-import type { Attraction, ItineraryItem } from "@/types";
+import type { Attraction, ItineraryItem, SavedList, SavedListData } from "@/types";
+import { useAuth } from "@/context/auth-context";
+import { getSavedLists, saveList, deleteList as deleteListFromDB, updateList } from "@/lib/firestore";
+import { signOut } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 
 import { SearchForm } from "@/components/search-form";
 import { AttractionCard } from "@/components/attraction-card";
+import { AuthDialog } from "@/components/auth-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -21,24 +26,24 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ClipboardList, Trash2, X, Pilcrow, Map, ListFilter, Lightbulb, Save, BookMarked } from "lucide-react";
+import { ClipboardList, Trash2, X, Pilcrow, Map, ListFilter, Lightbulb, Save, BookMarked, User as UserIcon, LogOut } from "lucide-react";
 import { getCategoryIcon } from "@/lib/icons";
 
-type SavedList = {
-  itinerary: ItineraryItem[];
-  searchResults: Attraction[];
-};
-
 export default function Home() {
+  const { user } = useAuth();
   const [searchResults, setSearchResults] = useState<Attraction[]>([]);
   const [itinerary, setItinerary] = useState<ItineraryItem[]>([]);
-  const [savedLists, setSavedLists] = useState<{ [name: string]: SavedList }>({});
+  const [savedLists, setSavedLists] = useState<SavedListData[]>([]);
+  const [isFetchingLists, setIsFetchingLists] = useState(false);
+  
   const [isLoading, setIsLoading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
+  
+  const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
   const [newListName, setNewListName] = useState("");
   const [isConfirmReplaceDialogOpen, setIsConfirmReplaceDialogOpen] = useState(false);
-  const [listToReplace, setListToReplace] = useState("");
+  const [listToReplace, setListToReplace] = useState<SavedListData | null>(null);
   const [selectedListToReplace, setSelectedListToReplace] = useState("");
   const { toast } = useToast();
 
@@ -61,19 +66,10 @@ export default function Home() {
         setItinerary(itinerary || []);
         setSearchResults(searchResults || []);
       }
-      const savedListsData = localStorage.getItem("wanderTestSavedLists");
-      if (savedListsData) {
-        setSavedLists(JSON.parse(savedListsData));
-      }
     } catch (error) {
       console.error("Failed to load data from localStorage", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Could not load your saved data.",
-      });
     }
-  }, [toast]);
+  }, []);
 
   useEffect(() => {
     try {
@@ -82,6 +78,29 @@ export default function Home() {
       console.error("Failed to save current state to localStorage", error);
     }
   }, [itinerary, searchResults]);
+
+  useEffect(() => {
+    if (user) {
+      setIsFetchingLists(true);
+      getSavedLists(user.uid)
+        .then(lists => {
+          setSavedLists(lists);
+        })
+        .catch(error => {
+          console.error("Error fetching saved lists:", error);
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Could not fetch your saved lists.",
+          });
+        })
+        .finally(() => {
+          setIsFetchingLists(false);
+        });
+    } else {
+      setSavedLists([]);
+    }
+  }, [user, toast]);
 
   const onSearch = async (data: SearchActionInput) => {
     setIsLoading(true);
@@ -147,86 +166,111 @@ export default function Home() {
       title: "To-do list Cleared",
     });
   };
-  
-  const updateSavedLists = (newSavedLists: { [name: string]: SavedList }) => {
-    setSavedLists(newSavedLists);
-    try {
-      localStorage.setItem("wanderTestSavedLists", JSON.stringify(newSavedLists));
-    } catch (error) {
-      console.error("Failed to save lists to localStorage", error);
-      toast({
-        variant: "destructive",
-        title: "Save Failed",
-        description: "Could not update your saved lists.",
-      });
-    }
-  };
 
-  const handleSaveList = () => {
+  const handleSaveList = async () => {
+    if (!user) return;
     const trimmedListName = newListName.trim();
     if (!trimmedListName) {
       toast({ variant: "destructive", title: "Invalid Name", description: "Please enter a name for your list." });
       return;
     }
-    if (savedLists[trimmedListName]) {
-      setListToReplace(trimmedListName);
+    const existingList = savedLists.find(list => list.name === trimmedListName);
+    if (existingList) {
+      setListToReplace(existingList);
       setIsConfirmReplaceDialogOpen(true);
       return;
     }
     const newList: SavedList = { itinerary, searchResults };
-    const newSavedLists = { ...savedLists, [trimmedListName]: newList };
-    updateSavedLists(newSavedLists);
-    toast({ title: "List Saved!", description: `Your to-do list "${trimmedListName}" has been saved.` });
-    setIsSaveDialogOpen(false);
-    setNewListName("");
+    try {
+      const savedDoc = await saveList(user.uid, trimmedListName, newList);
+      setSavedLists(prev => [...prev, { id: savedDoc.id, name: trimmedListName, ...newList }]);
+      toast({ title: "List Saved!", description: `Your to-do list "${trimmedListName}" has been saved.` });
+      setIsSaveDialogOpen(false);
+      setNewListName("");
+    } catch (error) {
+      console.error("Error saving list:", error);
+      toast({ variant: "destructive", title: "Save Failed", description: "Could not save your list." });
+    }
   };
 
-  const handleConfirmReplace = () => {
-    const newList: SavedList = { itinerary, searchResults };
-    const newSavedLists = { ...savedLists, [listToReplace]: newList };
-    updateSavedLists(newSavedLists);
-    toast({ title: "List Replaced", description: `List "${listToReplace}" has been updated.` });
+  const handleConfirmReplace = async () => {
+    if (!user || !listToReplace) return;
+
+    const newListData: SavedList = { itinerary, searchResults };
+    try {
+      await updateList(user.uid, listToReplace.id, listToReplace.name, newListData);
+      setSavedLists(prev => prev.map(l => l.id === listToReplace.id ? { ...l, ...newListData } : l));
+      toast({ title: "List Replaced", description: `List "${listToReplace.name}" has been updated.` });
+    } catch (error) {
+      console.error("Error replacing list:", error);
+      toast({ variant: "destructive", title: "Update Failed", description: "Could not update the list." });
+    }
     
     setIsConfirmReplaceDialogOpen(false);
     setIsSaveDialogOpen(false);
     setNewListName("");
-    setListToReplace("");
+    setListToReplace(null);
   };
 
-  const handleReplaceList = () => {
-    if (!selectedListToReplace) {
-      toast({
-        variant: "destructive",
-        title: "Selection Required",
-        description: "Please select a list to replace.",
-      });
+  const handleReplaceList = async () => {
+    if (!user || !selectedListToReplace) {
+      toast({ variant: "destructive", title: "Selection Required", description: "Please select a list to replace." });
       return;
     }
-    const newList: SavedList = { itinerary, searchResults };
-    const newSavedLists = { ...savedLists, [selectedListToReplace]: newList };
-    updateSavedLists(newSavedLists);
-    toast({ title: "List Replaced", description: `List "${selectedListToReplace}" has been updated.` });
-    setIsSaveDialogOpen(false);
-    setNewListName("");
-    setSelectedListToReplace("");
+    const listToUpdate = savedLists.find(l => l.id === selectedListToReplace);
+    if (!listToUpdate) return;
+
+    const newListData: SavedList = { itinerary, searchResults };
+    try {
+      await updateList(user.uid, listToUpdate.id, listToUpdate.name, newListData);
+      setSavedLists(prev => prev.map(l => l.id === listToUpdate.id ? { ...l, ...newListData } : l));
+      toast({ title: "List Replaced", description: `List "${listToUpdate.name}" has been updated.` });
+      
+      setIsSaveDialogOpen(false);
+      setNewListName("");
+      setSelectedListToReplace("");
+    } catch (error) {
+      console.error("Error replacing list:", error);
+      toast({ variant: "destructive", title: "Update Failed", description: "Could not update the list." });
+    }
   };
 
-  const handleLoadList = (listName: string) => {
-    const listToLoad = savedLists[listName];
+  const handleLoadList = (listId: string) => {
+    const listToLoad = savedLists.find(l => l.id === listId);
     if (listToLoad) {
       setItinerary(listToLoad.itinerary);
       setSearchResults(listToLoad.searchResults);
       setSelectedCategory("All");
-      toast({ title: "List Loaded", description: `"${listName}" is now your active to-do list.` });
+      toast({ title: "List Loaded", description: `"${listToLoad.name}" is now your active to-do list.` });
     }
   };
 
-  const handleDeleteList = (listName: string) => {
-    const newSavedLists = { ...savedLists };
-    delete newSavedLists[listName];
-    updateSavedLists(newSavedLists);
-    toast({ title: "List Deleted", description: `"${listName}" has been deleted.` });
+  const handleDeleteList = async (listId: string) => {
+    if (!user) return;
+    const listName = savedLists.find(l => l.id === listId)?.name || "The list";
+    try {
+      await deleteListFromDB(user.uid, listId);
+      setSavedLists(prev => prev.filter(l => l.id !== listId));
+      toast({ title: "List Deleted", description: `"${listName}" has been deleted.` });
+    } catch (error) {
+      console.error("Error deleting list:", error);
+      toast({ variant: "destructive", title: "Delete Failed", description: "Could not delete the list." });
+    }
   };
+
+  const handleSignOut = async () => {
+    if (!auth) {
+        toast({ variant: "destructive", title: "Sign Out Failed", description: "Firebase is not configured." });
+        return;
+    }
+    try {
+      await signOut(auth);
+      toast({ title: "Signed Out", description: "You have been successfully signed out." });
+    } catch (error) {
+      console.error("Sign out error", error);
+      toast({ variant: "destructive", title: "Sign Out Failed", description: "There was a problem signing you out." });
+    }
+  }
 
   const categories = useMemo(() => {
     if (searchResults.length === 0) return [];
@@ -249,25 +293,30 @@ export default function Home() {
               WanderTest
             </h1>
           </Link>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline">
+                <Button variant="outline" disabled={!user && !isFetchingLists} onClick={() => { if (!user) setIsAuthDialogOpen(true)}}>
                   <BookMarked />
                   My Saved Lists
-                  <Badge className="ml-2">{Object.keys(savedLists).length}</Badge>
+                  {user && <Badge className="ml-2">{savedLists.length}</Badge>}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuContent align="end" className="w-64">
                 <DropdownMenuLabel>Your Lists</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                {Object.keys(savedLists).length > 0 ? (
-                  Object.keys(savedLists).map(listName => (
-                    <DropdownMenuItem key={listName} className="flex justify-between items-center" onSelect={(e) => e.preventDefault()}>
-                      <button className="flex-grow text-left" onClick={() => handleLoadList(listName)}>
-                        {listName}
+                {isFetchingLists ? (
+                  <div className="p-2 space-y-2">
+                    <Skeleton className="h-8 w-full" />
+                    <Skeleton className="h-8 w-full" />
+                  </div>
+                ) : savedLists.length > 0 ? (
+                  savedLists.map(list => (
+                    <DropdownMenuItem key={list.id} className="flex justify-between items-center" onSelect={(e) => e.preventDefault()}>
+                      <button className="flex-grow text-left truncate pr-2" onClick={() => handleLoadList(list.id)}>
+                        {list.name}
                       </button>
-                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleDeleteList(listName)}>
+                      <Button variant="ghost" size="icon" className="h-6 w-6 flex-shrink-0" onClick={() => handleDeleteList(list.id)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </DropdownMenuItem>
@@ -277,6 +326,31 @@ export default function Home() {
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
+
+            {user ? (
+               <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon" className="rounded-full">
+                    <UserIcon />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">Signed in as</p>
+                      <p className="text-xs leading-none text-muted-foreground truncate">{user.email}</p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleSignOut}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Sign out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button variant="outline" onClick={() => setIsAuthDialogOpen(true)}>Sign In</Button>
+            )}
           </div>
         </div>
       </header>
@@ -383,7 +457,11 @@ export default function Home() {
               </CardContent>
               {itinerary.length > 0 && (
                  <CardFooter className="flex flex-col sm:flex-row gap-2">
-                   <Button variant="outline" onClick={() => setIsSaveDialogOpen(true)} className="w-full">
+                   <Button
+                     variant="outline"
+                     onClick={() => user ? setIsSaveDialogOpen(true) : setIsAuthDialogOpen(true)}
+                     className="w-full"
+                   >
                      <Save />
                      Save List
                    </Button>
@@ -397,6 +475,9 @@ export default function Home() {
           </div>
         </div>
       </main>
+
+      <AuthDialog open={isAuthDialogOpen} onOpenChange={setIsAuthDialogOpen} />
+
       <Dialog open={isSaveDialogOpen} onOpenChange={(open) => {
         setIsSaveDialogOpen(open)
         if (!open) {
@@ -414,7 +495,7 @@ export default function Home() {
           <Tabs defaultValue="new" className="w-full pt-4">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="new">Save as New</TabsTrigger>
-              <TabsTrigger value="replace" disabled={Object.keys(savedLists).length === 0}>Replace Existing</TabsTrigger>
+              <TabsTrigger value="replace" disabled={savedLists.length === 0}>Replace Existing</TabsTrigger>
             </TabsList>
             <TabsContent value="new" className="pt-4">
               <div className="space-y-2">
@@ -439,8 +520,8 @@ export default function Home() {
                     <SelectValue placeholder="Select a list..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.keys(savedLists).map(listName => (
-                      <SelectItem key={listName} value={listName}>{listName}</SelectItem>
+                    {savedLists.map(list => (
+                      <SelectItem key={list.id} value={list.id}>{list.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -455,14 +536,14 @@ export default function Home() {
       <AlertDialog open={isConfirmReplaceDialogOpen} onOpenChange={(open) => {
         setIsConfirmReplaceDialogOpen(open)
         if (!open) {
-          setListToReplace("");
+          setListToReplace(null);
         }
       }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Replace List?</AlertDialogTitle>
             <AlertDialogDescription>
-              A list named "{listToReplace}" already exists. Do you want to replace it?
+              A list named "{listToReplace?.name}" already exists. Do you want to replace it?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -474,5 +555,3 @@ export default function Home() {
     </div>
   );
 }
-
-    

@@ -1,3 +1,4 @@
+
 export type Attraction = {
   title: string;
   description: string;
@@ -7,4 +8,14 @@ export type Attraction = {
 
 export type ItineraryItem = Attraction & {
   id: string;
+};
+
+export type SavedList = {
+  itinerary: ItineraryItem[];
+  searchResults: Attraction[];
+};
+
+export type SavedListData = SavedList & {
+  id: string;
+  name: string;
 };
