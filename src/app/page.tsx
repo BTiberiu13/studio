@@ -234,12 +234,19 @@ export default function Home() {
   };
 
   const handleReplaceList = async () => {
-    if (!user || !selectedListToReplace) {
+    if (!user) {
+        setIsAuthDialogOpen(true);
+        return;
+    }
+    if (!selectedListToReplace) {
       toast({ variant: "destructive", title: "Selection Required", description: "Please select a list to replace." });
       return;
     }
     const listToUpdate = savedLists.find(l => l.id === selectedListToReplace);
-    if (!listToUpdate) return;
+    if (!listToUpdate) {
+        toast({ variant: "destructive", title: "Error", description: "Could not find the selected list to replace." });
+        return;
+    }
 
     const newListData: SavedList = { itinerary, searchResults };
     try {
@@ -557,7 +564,7 @@ export default function Home() {
               </div>
             </TabsContent>
           </Tabs>
-          <DialogFooter className={saveDialogActiveTab === 'new' ? "sm:justify-start" : "sm:justify-end"}>
+          <DialogFooter>
             {saveDialogActiveTab === 'new' ? (
               <Button onClick={handleSaveNewList}>Save New List</Button>
             ) : (
