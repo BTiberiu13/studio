@@ -334,7 +334,7 @@ export default function Home() {
           <div className="flex items-center gap-2 sm:gap-4">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" disabled={!user && !isFetchingLists} onClick={() => { if (!user) setIsAuthDialogOpen(true)}}>
+                <Button variant="secondary" disabled={!user && !isFetchingLists} onClick={() => { if (!user) setIsAuthDialogOpen(true)}}>
                   <BookMarked />
                   My Saved Lists
                   {user && <Badge className="ml-2">{savedLists.length}</Badge>}
@@ -368,7 +368,7 @@ export default function Home() {
             {user ? (
                <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="icon" className="rounded-full">
+                  <Button variant="secondary" size="icon" className="rounded-full">
                     <UserIcon />
                   </Button>
                 </DropdownMenuTrigger>
@@ -387,7 +387,7 @@ export default function Home() {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Button variant="outline" onClick={() => setIsAuthDialogOpen(true)}>Sign In</Button>
+              <Button variant="secondary" onClick={() => setIsAuthDialogOpen(true)}>Sign In</Button>
             )}
           </div>
         </div>
@@ -606,3 +606,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
