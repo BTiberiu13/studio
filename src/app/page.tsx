@@ -19,7 +19,6 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
@@ -42,8 +41,6 @@ export default function Home() {
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
   const [newListName, setNewListName] = useState("");
-  const [isConfirmReplaceDialogOpen, setIsConfirmReplaceDialogOpen] = useState(false);
-  const [listToReplace, setListToReplace] = useState<SavedListData | null>(null);
   const [selectedListToReplace, setSelectedListToReplace] = useState("");
   const { toast } = useToast();
 
@@ -167,8 +164,11 @@ export default function Home() {
     });
   };
 
-  const handleSaveList = async () => {
-    if (!user) return;
+  const handleSaveNewList = async () => {
+    if (!user) {
+        setIsAuthDialogOpen(true);
+        return;
+    };
     const trimmedListName = newListName.trim();
     if (!trimmedListName) {
       toast({ variant: "destructive", title: "Invalid Name", description: "Please enter a name for your list." });
@@ -176,8 +176,11 @@ export default function Home() {
     }
     const existingList = savedLists.find(list => list.name === trimmedListName);
     if (existingList) {
-      setListToReplace(existingList);
-      setIsConfirmReplaceDialogOpen(true);
+      toast({ 
+        variant: "destructive", 
+        title: "Name Already Exists", 
+        description: `A list named "${trimmedListName}" already exists. Please use a different name or replace the existing list.` 
+      });
       return;
     }
     const newList: SavedList = { itinerary, searchResults };
@@ -191,25 +194,6 @@ export default function Home() {
       console.error("Error saving list:", error);
       toast({ variant: "destructive", title: "Save Failed", description: "Could not save your list." });
     }
-  };
-
-  const handleConfirmReplace = async () => {
-    if (!user || !listToReplace) return;
-
-    const newListData: SavedList = { itinerary, searchResults };
-    try {
-      await updateList(user.uid, listToReplace.id, listToReplace.name, newListData);
-      setSavedLists(prev => prev.map(l => l.id === listToReplace.id ? { ...l, ...newListData } : l));
-      toast({ title: "List Replaced", description: `List "${listToReplace.name}" has been updated.` });
-    } catch (error) {
-      console.error("Error replacing list:", error);
-      toast({ variant: "destructive", title: "Update Failed", description: "Could not update the list." });
-    }
-    
-    setIsConfirmReplaceDialogOpen(false);
-    setIsSaveDialogOpen(false);
-    setNewListName("");
-    setListToReplace(null);
   };
 
   const handleReplaceList = async () => {
@@ -505,11 +489,11 @@ export default function Home() {
                   value={newListName}
                   onChange={(e) => setNewListName(e.target.value)}
                   placeholder="e.g., Japan Trip Summer '24"
-                  onKeyDown={(e) => e.key === 'Enter' && handleSaveList()}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSaveNewList()}
                 />
               </div>
               <DialogFooter className="pt-4">
-                <Button onClick={handleSaveList}>Save New List</Button>
+                <Button onClick={handleSaveNewList}>Save New List</Button>
               </DialogFooter>
             </TabsContent>
             <TabsContent value="replace" className="pt-4">
@@ -533,25 +517,6 @@ export default function Home() {
           </Tabs>
         </DialogContent>
       </Dialog>
-      <AlertDialog open={isConfirmReplaceDialogOpen} onOpenChange={(open) => {
-        setIsConfirmReplaceDialogOpen(open)
-        if (!open) {
-          setListToReplace(null);
-        }
-      }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Replace List?</AlertDialogTitle>
-            <AlertDialogDescription>
-              A list named "{listToReplace?.name}" already exists. Do you want to replace it?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmReplace}>Replace</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
