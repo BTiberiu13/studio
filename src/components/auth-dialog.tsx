@@ -2,14 +2,7 @@
 "use client";
 
 import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  type AuthError,
-} from "firebase/auth";
+import { GoogleAuthProvider, signInWithPopup, type AuthError } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 
@@ -21,25 +14,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
-const formSchema = z.object({
-  email: z.string().email({ message: "Please enter a valid email." }),
-  password: z
-    .string()
-    .min(6, { message: "Password must be at least 6 characters." }),
-});
-
-type FormValues = z.infer<typeof formSchema>;
+// A simple SVG for the Google icon
+const GoogleIcon = () => (
+    <svg className="h-4 w-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512">
+      <path fill="currentColor" d="M488 261.8C488 403.3 381.5 512 244 512S0 403.3 0 261.8 106.5 11.8 244 11.8c70.4 0 129.5 27.9 173.2 69.1l-63.5 61.8C324.4 121.3 287.1 98.3 244 98.3c-83.8 0-152.4 68.6-152.4 163.5s68.6 163.5 152.4 163.5c97.1 0 131.6-69.5 136.8-106.2H244v-81.4h236.1c2.4 12.8 3.9 26.6 3.9 41.2z"></path>
+    </svg>
+);
 
 type AuthDialogProps = {
   open: boolean;
@@ -48,15 +31,10 @@ type AuthDialogProps = {
 
 export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState("signin");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { register, handleSubmit, formState: { errors } } = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
-  });
-
-  const handleAuth = async (data: FormValues) => {
+  const handleGoogleSignIn = async () => {
     setIsLoading(true);
     setError(null);
 
@@ -66,18 +44,25 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
         return;
     }
 
+    const provider = new GoogleAuthProvider();
+
     try {
-      if (activeTab === "signin") {
-        await signInWithEmailAndPassword(auth, data.email, data.password);
-        toast({ title: "Success", description: "You've been signed in." });
-      } else {
-        await createUserWithEmailAndPassword(auth, data.email, data.password);
-        toast({ title: "Welcome!", description: "Your account has been created." });
-      }
+      await signInWithPopup(auth, provider);
+      toast({ title: "Success", description: "You've been signed in with Google." });
       onOpenChange(false);
     } catch (e) {
       const authError = e as AuthError;
-      setError(authError.message || "An unexpected error occurred.");
+      switch (authError.code) {
+        case 'auth/popup-closed-by-user':
+          // User closed the popup, so we'll just ignore it.
+          break;
+        case 'auth/account-exists-with-different-credential':
+          setError("An account already exists with the same email address but different sign-in credentials. Sign in using a provider associated with this email address.");
+          break;
+        default:
+          setError(authError.message || "An unexpected error occurred.");
+          break;
+      }
     } finally {
       setIsLoading(false);
     }
@@ -87,56 +72,28 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>
-            {activeTab === "signin" ? "Sign In" : "Create Account"}
-          </DialogTitle>
+          <DialogTitle>Sign In</DialogTitle>
           <DialogDescription>
-            {activeTab === "signin"
-              ? "Access your saved lists and plans."
-              : "Join to start saving your travel plans."}
+            Sign in with your Google account to save and manage your lists.
           </DialogDescription>
         </DialogHeader>
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="signin">Sign In</TabsTrigger>
-            <TabsTrigger value="signup">Sign Up</TabsTrigger>
-          </TabsList>
-          <TabsContent value="signin">
-            <AuthForm onSubmit={handleAuth} handleSubmit={handleSubmit} register={register} errors={errors} isLoading={isLoading} error={error} />
-          </TabsContent>
-          <TabsContent value="signup">
-            <AuthForm onSubmit={handleAuth} handleSubmit={handleSubmit} register={register} errors={errors} isLoading={isLoading} error={error} />
-          </TabsContent>
-        </Tabs>
+        <div className="space-y-4 pt-4">
+            {error && (
+            <Alert variant="destructive">
+                <AlertTitle>Authentication Error</AlertTitle>
+                <AlertDescription>{error}</AlertDescription>
+            </Alert>
+            )}
+            <Button onClick={handleGoogleSignIn} className="w-full" disabled={isLoading}>
+            {isLoading ? (
+                <Loader2 className="animate-spin" />
+            ) : (
+                <GoogleIcon />
+            )}
+            <span>{isLoading ? "Redirecting..." : "Sign in with Google"}</span>
+            </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );
-}
-
-// Sub-component for the form to avoid repetition
-function AuthForm({ onSubmit, handleSubmit, register, errors, isLoading, error }: any) {
-  return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pt-4">
-       {error && (
-        <Alert variant="destructive">
-          <AlertTitle>Authentication Error</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-      <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
-        <Input id="email" type="email" {...register("email")} />
-        {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="password">Password</Label>
-        <Input id="password" type="password" {...register("password")} />
-        {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
-      </div>
-      <Button type="submit" className="w-full" disabled={isLoading}>
-        {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        {isLoading ? "Processing..." : "Continue"}
-      </Button>
-    </form>
-  )
 }
