@@ -42,6 +42,7 @@ export default function Home() {
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
   const [newListName, setNewListName] = useState("");
   const [selectedListToReplace, setSelectedListToReplace] = useState("");
+  const [saveDialogActiveTab, setSaveDialogActiveTab] = useState("new");
   const { toast } = useToast();
 
   const handleReset = () => {
@@ -463,10 +464,11 @@ export default function Home() {
       <AuthDialog open={isAuthDialogOpen} onOpenChange={setIsAuthDialogOpen} />
 
       <Dialog open={isSaveDialogOpen} onOpenChange={(open) => {
-        setIsSaveDialogOpen(open)
+        setIsSaveDialogOpen(open);
         if (!open) {
           setNewListName("");
           setSelectedListToReplace("");
+          setSaveDialogActiveTab("new");
         }
       }}>
         <DialogContent>
@@ -476,12 +478,12 @@ export default function Home() {
               You can save the current list as a new one, or replace an existing list.
             </DialogDescription>
           </DialogHeader>
-          <Tabs defaultValue="new" className="w-full pt-4">
+          <Tabs defaultValue="new" className="w-full pt-4" value={saveDialogActiveTab} onValueChange={setSaveDialogActiveTab}>
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="new">Save as New</TabsTrigger>
               <TabsTrigger value="replace" disabled={savedLists.length === 0}>Replace Existing</TabsTrigger>
             </TabsList>
-            <TabsContent value="new" className="pt-4">
+            <TabsContent value="new" className="pt-4 space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="name">New List Name</Label>
                 <Input
@@ -492,11 +494,8 @@ export default function Home() {
                   onKeyDown={(e) => e.key === 'Enter' && handleSaveNewList()}
                 />
               </div>
-              <DialogFooter className="pt-4">
-                <Button onClick={handleSaveNewList}>Save New List</Button>
-              </DialogFooter>
             </TabsContent>
-            <TabsContent value="replace" className="pt-4">
+            <TabsContent value="replace" className="pt-4 space-y-4">
                <div className="space-y-2">
                 <Label htmlFor="replace-select">Select a list to replace</Label>
                 <Select onValueChange={setSelectedListToReplace} value={selectedListToReplace}>
@@ -510,11 +509,15 @@ export default function Home() {
                   </SelectContent>
                 </Select>
               </div>
-              <DialogFooter className="pt-4">
-                <Button onClick={handleReplaceList} disabled={!selectedListToReplace}>Replace Selected List</Button>
-              </DialogFooter>
             </TabsContent>
           </Tabs>
+          <DialogFooter>
+            {saveDialogActiveTab === 'new' ? (
+              <Button onClick={handleSaveNewList}>Save New List</Button>
+            ) : (
+              <Button onClick={handleReplaceList} disabled={!selectedListToReplace}>Replace Selected List</Button>
+            )}
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
