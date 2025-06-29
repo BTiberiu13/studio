@@ -557,7 +557,7 @@ export default function Home() {
               </div>
             </TabsContent>
           </Tabs>
-          <DialogFooter>
+          <DialogFooter className={saveDialogActiveTab === 'new' ? "sm:justify-start" : "sm:justify-end"}>
             {saveDialogActiveTab === 'new' ? (
               <Button onClick={handleSaveNewList}>Save New List</Button>
             ) : (
