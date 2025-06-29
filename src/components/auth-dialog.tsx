@@ -102,10 +102,10 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
             <TabsTrigger value="signup">Sign Up</TabsTrigger>
           </TabsList>
           <TabsContent value="signin">
-            <AuthForm onSubmit={handleAuth} register={register} errors={errors} isLoading={isLoading} error={error} />
+            <AuthForm onSubmit={handleAuth} handleSubmit={handleSubmit} register={register} errors={errors} isLoading={isLoading} error={error} />
           </TabsContent>
           <TabsContent value="signup">
-            <AuthForm onSubmit={handleAuth} register={register} errors={errors} isLoading={isLoading} error={error} />
+            <AuthForm onSubmit={handleAuth} handleSubmit={handleSubmit} register={register} errors={errors} isLoading={isLoading} error={error} />
           </TabsContent>
         </Tabs>
       </DialogContent>
@@ -114,7 +114,7 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
 }
 
 // Sub-component for the form to avoid repetition
-function AuthForm({ onSubmit, register, errors, isLoading, error }: any) {
+function AuthForm({ onSubmit, handleSubmit, register, errors, isLoading, error }: any) {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pt-4">
        {error && (
