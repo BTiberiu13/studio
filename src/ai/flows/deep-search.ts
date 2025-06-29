@@ -14,7 +14,7 @@ import {z} from 'genkit';
 const DeepSearchAttractionsInputSchema = z.object({
   location: z.string().describe('The location to search for attractions.'),
   timeframe: z.string().describe('The timeframe for the search (e.g., "this weekend", "next month").'),
-  interests: z.string().optional().describe('Optional: Specific interests to filter the search (e.g., "historical sites", "outdoor activities").'),
+  travelStyle: z.enum(["Relaxed", "Traveler", "Fanatic"]).describe("The user's travel style, which determines the number of suggestions."),
 });
 export type DeepSearchAttractionsInput = z.infer<typeof DeepSearchAttractionsInputSchema>;
 
@@ -40,11 +40,15 @@ const prompt = ai.definePrompt({
   output: {schema: DeepSearchAttractionsOutputSchema},
   prompt: `You are a travel expert helping users discover attractions, experiences, and points of interest.
 
-  Based on the user's location, timeframe, and interests, provide a list of relevant options.
+  Based on the user's location, timeframe, and travel style, provide a list of relevant options.
+  Adjust the number of recommendations based on the travel style:
+  - "Relaxed": A few (3-5) key attractions.
+  - "Traveler": A moderate list (8-12) of popular and interesting spots.
+  - "Fanatic": A comprehensive list (15-20) of many things to see and do, including hidden gems.
 
   Location: {{{location}}}
   Timeframe: {{{timeframe}}}
-  Interests: {{{interests}}}
+  Travel Style: {{{travelStyle}}}
 
   Format the output as a JSON array of objects, each containing the title, description, category, and address (if available) of the attraction or experience.
   `,

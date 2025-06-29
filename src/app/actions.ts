@@ -12,7 +12,9 @@ const formSchema = z.object({
     from: z.date({ required_error: "A start date is required." }),
     to: z.date({ required_error: "An end date is required." }),
   }),
-  interests: z.string().max(200).optional(),
+  travelStyle: z.enum(["Relaxed", "Traveler", "Fanatic"], {
+    required_error: "You need to select a travel style.",
+  }),
 });
 
 export type SearchActionInput = z.infer<typeof formSchema>;
@@ -32,13 +34,13 @@ export async function handleSearch(data: SearchActionInput): Promise<SearchResul
   }
 
   try {
-    const { location, timeframe, interests } = validation.data;
+    const { location, timeframe, travelStyle } = validation.data;
     const timeframeString = `${format(timeframe.from, "PPP")} - ${format(timeframe.to, "PPP")}`;
     
     const aiInput: DeepSearchAttractionsInput = {
         location,
         timeframe: timeframeString,
-        interests,
+        travelStyle,
     };
 
     const results = await deepSearchAttractions(aiInput);

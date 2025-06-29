@@ -11,10 +11,10 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const formSchema = z.object({
   location: z.string().min(1, "Location is required.").max(100),
@@ -25,7 +25,9 @@ const formSchema = z.object({
     required_error: "A date range is required.",
     invalid_type_error: "A complete date range is required.",
   }),
-  interests: z.string().max(200).optional(),
+  travelStyle: z.enum(["Relaxed", "Traveler", "Fanatic"], {
+    required_error: "You need to select a travel style.",
+  }),
 });
 
 type SearchFormProps = {
@@ -42,7 +44,7 @@ export function SearchForm({ onSearch, isLoading }: SearchFormProps) {
         from: new Date(),
         to: new Date(new Date().setDate(new Date().getDate() + 7)),
       },
-      interests: "Temples, traditional gardens, and local cuisine",
+      travelStyle: "Traveler",
     },
   });
 
@@ -117,19 +119,24 @@ export function SearchForm({ onSearch, isLoading }: SearchFormProps) {
                 </FormItem>
               )}
             />
-            <FormField
+             <FormField
               control={form.control}
-              name="interests"
+              name="travelStyle"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Interests (optional)</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="e.g., history, a"
-                      className="resize-none"
-                      {...field}
-                    />
-                  </FormControl>
+                  <FormLabel>Travel Style</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select your travel style" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="Relaxed">Relaxed</SelectItem>
+                      <SelectItem value="Traveler">Traveler</SelectItem>
+                      <SelectItem value="Fanatic">Fanatic</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
