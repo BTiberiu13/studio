@@ -38,19 +38,29 @@ const prompt = ai.definePrompt({
   name: 'deepSearchAttractionsPrompt',
   input: {schema: DeepSearchAttractionsInputSchema},
   output: {schema: DeepSearchAttractionsOutputSchema},
-  prompt: `You are a travel expert helping users discover attractions, experiences, and points of interest.
+  prompt: `You are an expert travel consultant tasked with creating a curated list of recommendations for a user.
 
-  Based on the user's location, timeframe, and travel style, provide a list of relevant options.
-  Adjust the number of recommendations based on the travel style:
-  - "Relaxed": A few (3-5) key attractions.
-  - "Traveler": A moderate list (8-12) of popular and interesting spots.
-  - "Fanatic": A comprehensive list (15-20) of many things to see and do, including hidden gems.
+Based on the user's input for location, timeframe, and travel style, you will generate a list of suggestions.
 
-  Location: {{{location}}}
-  Timeframe: {{{timeframe}}}
-  Travel Style: {{{travelStyle}}}
+You must provide recommendations from ALL of the following categories:
+- Attractions (e.g., landmarks, monuments)
+- Experiences (e.g., tours, classes)
+- Points of Interest (e.g., scenic viewpoints, unique districts)
+- Restaurants
+- Bars
+- Local Hidden Gems
 
-  Format the output as a JSON array of objects, each containing the title, description, category, and address (if available) of the attraction or experience.
+The number of recommendations you provide for EACH category MUST be determined by the user's Travel Style:
+- For "Relaxed" style: Provide exactly 5 recommendations per category.
+- For "Traveler" style: Provide exactly 10 recommendations per category.
+- For "Fanatic" style: Provide exactly 15 recommendations per category.
+
+User's query details:
+Location: {{{location}}}
+Timeframe: {{{timeframe}}}
+Travel Style: {{{travelStyle}}}
+
+Your final output must be a single JSON object. This object should adhere to the provided output schema. Ensure each item in the 'results' array has a 'title', 'description', 'category', and an optional 'address'. The 'category' field for each item should accurately reflect one of the categories listed above.
   `,
 });
 
