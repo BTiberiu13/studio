@@ -18,6 +18,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ClipboardList, Trash2, X, Pilcrow, Map, ListFilter, Lightbulb, Save, BookMarked } from "lucide-react";
 import { getCategoryIcon } from "@/lib/icons";
 
@@ -36,6 +38,7 @@ export default function Home() {
   const [newListName, setNewListName] = useState("");
   const [isConfirmReplaceDialogOpen, setIsConfirmReplaceDialogOpen] = useState(false);
   const [listToReplace, setListToReplace] = useState("");
+  const [selectedListToReplace, setSelectedListToReplace] = useState("");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -175,6 +178,24 @@ export default function Home() {
     setIsSaveDialogOpen(false);
     setNewListName("");
     setListToReplace("");
+  };
+
+  const handleReplaceList = () => {
+    if (!selectedListToReplace) {
+      toast({
+        variant: "destructive",
+        title: "Selection Required",
+        description: "Please select a list to replace.",
+      });
+      return;
+    }
+    const newList: SavedList = { itinerary, searchResults };
+    const newSavedLists = { ...savedLists, [selectedListToReplace]: newList };
+    updateSavedLists(newSavedLists);
+    toast({ title: "List Replaced", description: `List "${selectedListToReplace}" has been updated.` });
+    setIsSaveDialogOpen(false);
+    setNewListName("");
+    setSelectedListToReplace("");
   };
 
   const handleLoadList = (listName: string) => {
@@ -365,33 +386,57 @@ export default function Home() {
       </main>
       <Dialog open={isSaveDialogOpen} onOpenChange={(open) => {
         setIsSaveDialogOpen(open)
-        if (!open) setNewListName("");
+        if (!open) {
+          setNewListName("");
+          setSelectedListToReplace("");
+        }
       }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Save Your To-Do List</DialogTitle>
             <DialogDescription>
-              Give your list a name so you can find it later.
+              You can save the current list as a new one, or replace an existing list.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="name" className="text-right">
-                List Name
-              </Label>
-              <Input
-                id="name"
-                value={newListName}
-                onChange={(e) => setNewListName(e.target.value)}
-                className="col-span-3"
-                placeholder="e.g., Japan Trip Summer '24"
-                onKeyDown={(e) => e.key === 'Enter' && handleSaveList()}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button type="submit" onClick={handleSaveList}>Save list</Button>
-          </DialogFooter>
+          <Tabs defaultValue="new" className="w-full pt-4">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="new">Save as New</TabsTrigger>
+              <TabsTrigger value="replace" disabled={Object.keys(savedLists).length === 0}>Replace Existing</TabsTrigger>
+            </TabsList>
+            <TabsContent value="new" className="pt-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">New List Name</Label>
+                <Input
+                  id="name"
+                  value={newListName}
+                  onChange={(e) => setNewListName(e.target.value)}
+                  placeholder="e.g., Japan Trip Summer '24"
+                  onKeyDown={(e) => e.key === 'Enter' && handleSaveList()}
+                />
+              </div>
+              <DialogFooter className="pt-4">
+                <Button onClick={handleSaveList}>Save New List</Button>
+              </DialogFooter>
+            </TabsContent>
+            <TabsContent value="replace" className="pt-4">
+               <div className="space-y-2">
+                <Label htmlFor="replace-select">Select a list to replace</Label>
+                <Select onValueChange={setSelectedListToReplace} value={selectedListToReplace}>
+                  <SelectTrigger id="replace-select" className="w-full">
+                    <SelectValue placeholder="Select a list..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.keys(savedLists).map(listName => (
+                      <SelectItem key={listName} value={listName}>{listName}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <DialogFooter className="pt-4">
+                <Button onClick={handleReplaceList} disabled={!selectedListToReplace}>Replace Selected List</Button>
+              </DialogFooter>
+            </TabsContent>
+          </Tabs>
         </DialogContent>
       </Dialog>
       <AlertDialog open={isConfirmReplaceDialogOpen} onOpenChange={(open) => {
