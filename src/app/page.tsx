@@ -13,14 +13,21 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { ClipboardList, Trash2, X, Pilcrow, Map, ListFilter, Lightbulb } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ClipboardList, Trash2, X, Pilcrow, Map, ListFilter, Lightbulb, Save, BookMarked } from "lucide-react";
 import { getCategoryIcon } from "@/lib/icons";
 
 export default function Home() {
   const [searchResults, setSearchResults] = useState<Attraction[]>([]);
   const [itinerary, setItinerary] = useState<ItineraryItem[]>([]);
+  const [savedLists, setSavedLists] = useState<{ [name: string]: ItineraryItem[] }>({});
   const [isLoading, setIsLoading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
+  const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
+  const [newListName, setNewListName] = useState("");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -29,12 +36,16 @@ export default function Home() {
       if (savedItinerary) {
         setItinerary(JSON.parse(savedItinerary));
       }
+      const savedListsData = localStorage.getItem("wanderTestSavedLists");
+      if (savedListsData) {
+        setSavedLists(JSON.parse(savedListsData));
+      }
     } catch (error) {
-      console.error("Failed to load itinerary from localStorage", error);
+      console.error("Failed to load data from localStorage", error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Could not load your saved to-do list.",
+        description: "Could not load your saved data.",
       });
     }
   }, [toast]);
@@ -112,6 +123,51 @@ export default function Home() {
       title: "To-do list Cleared",
     });
   };
+  
+  const updateSavedLists = (newSavedLists: { [name: string]: ItineraryItem[] }) => {
+    setSavedLists(newSavedLists);
+    try {
+      localStorage.setItem("wanderTestSavedLists", JSON.stringify(newSavedLists));
+    } catch (error) {
+      console.error("Failed to save lists to localStorage", error);
+      toast({
+        variant: "destructive",
+        title: "Save Failed",
+        description: "Could not update your saved lists.",
+      });
+    }
+  };
+
+  const handleSaveList = () => {
+    if (!newListName.trim()) {
+      toast({ variant: "destructive", title: "Invalid Name", description: "Please enter a name for your list." });
+      return;
+    }
+    if (savedLists[newListName]) {
+      toast({ variant: "destructive", title: "Name Exists", description: `A list named "${newListName}" already exists.` });
+      return;
+    }
+    const newSavedLists = { ...savedLists, [newListName]: itinerary };
+    updateSavedLists(newSavedLists);
+    toast({ title: "List Saved!", description: `Your to-do list "${newListName}" has been saved.` });
+    setIsSaveDialogOpen(false);
+    setNewListName("");
+  };
+
+  const handleLoadList = (listName: string) => {
+    const listToLoad = savedLists[listName];
+    if (listToLoad) {
+      updateItinerary(listToLoad);
+      toast({ title: "List Loaded", description: `"${listName}" is now your active to-do list.` });
+    }
+  };
+
+  const handleDeleteList = (listName: string) => {
+    const newSavedLists = { ...savedLists };
+    delete newSavedLists[listName];
+    updateSavedLists(newSavedLists);
+    toast({ title: "List Deleted", description: `"${listName}" has been deleted.` });
+  };
 
   const categories = useMemo(() => {
     if (searchResults.length === 0) return [];
@@ -133,6 +189,35 @@ export default function Home() {
             <h1 className="text-2xl md:text-3xl font-bold font-headline">
               WanderTest
             </h1>
+          </div>
+          <div className="flex items-center gap-4">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                  <BookMarked />
+                  My Saved Lists
+                  <Badge className="ml-2">{Object.keys(savedLists).length}</Badge>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>Your Lists</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {Object.keys(savedLists).length > 0 ? (
+                  Object.keys(savedLists).map(listName => (
+                    <DropdownMenuItem key={listName} className="flex justify-between items-center" onSelect={(e) => e.preventDefault()}>
+                      <button className="flex-grow text-left" onClick={() => handleLoadList(listName)}>
+                        {listName}
+                      </button>
+                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleDeleteList(listName)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuItem>
+                  ))
+                ) : (
+                  <DropdownMenuItem disabled>No saved lists yet.</DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </header>
@@ -238,7 +323,11 @@ export default function Home() {
                 )}
               </CardContent>
               {itinerary.length > 0 && (
-                 <CardFooter>
+                 <CardFooter className="flex flex-col sm:flex-row gap-2">
+                   <Button variant="outline" onClick={() => setIsSaveDialogOpen(true)} className="w-full">
+                     <Save />
+                     Save List
+                   </Button>
                    <Button variant="destructive" onClick={clearItinerary} className="w-full">
                      <Trash2 />
                      <span>Clear to-do list</span>
@@ -249,6 +338,36 @@ export default function Home() {
           </div>
         </div>
       </main>
+      <Dialog open={isSaveDialogOpen} onOpenChange={setIsSaveDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Save Your To-Do List</DialogTitle>
+            <DialogDescription>
+              Give your list a name so you can find it later.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="name" className="text-right">
+                List Name
+              </Label>
+              <Input
+                id="name"
+                value={newListName}
+                onChange={(e) => setNewListName(e.target.value)}
+                className="col-span-3"
+                placeholder="e.g., Japan Trip Summer '24"
+                onKeyDown={(e) => e.key === 'Enter' && handleSaveList()}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="submit" onClick={handleSaveList}>Save list</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
+    
