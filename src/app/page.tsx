@@ -42,7 +42,10 @@ export default function Home() {
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
   const [isReplaceConfirmOpen, setIsReplaceConfirmOpen] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+
   const [listToReplaceOnConfirm, setListToReplaceOnConfirm] = useState<{ id: string; name: string } | null>(null);
+  const [listToDelete, setListToDelete] = useState<{ id: string; name: string } | null>(null);
 
   const [newListName, setNewListName] = useState("");
   const [selectedListToReplace, setSelectedListToReplace] = useState("");
@@ -262,17 +265,27 @@ export default function Home() {
       toast({ title: "List Loaded", description: `"${listToLoad.name}" is now your active to-do list.` });
     }
   };
-
-  const handleDeleteList = async (listId: string) => {
-    if (!user) return;
-    const listName = savedLists.find(l => l.id === listId)?.name || "The list";
+  
+  const openDeleteDialog = (listId: string) => {
+    const list = savedLists.find(l => l.id === listId);
+    if (list) {
+      setListToDelete({ id: list.id, name: list.name });
+      setIsDeleteConfirmOpen(true);
+    }
+  };
+  
+  const handleConfirmDelete = async () => {
+    if (!user || !listToDelete) return;
     try {
-      await deleteListFromDB(user.uid, listId);
-      setSavedLists(prev => prev.filter(l => l.id !== listId));
-      toast({ title: "List Deleted", description: `"${listName}" has been deleted.` });
+      await deleteListFromDB(user.uid, listToDelete.id);
+      setSavedLists(prev => prev.filter(l => l.id !== listToDelete.id));
+      toast({ title: "List Deleted", description: `"${listToDelete.name}" has been deleted.` });
     } catch (error) {
       console.error("Error deleting list:", error);
       toast({ variant: "destructive", title: "Delete Failed", description: "Could not delete the list." });
+    } finally {
+      setListToDelete(null);
+      setIsDeleteConfirmOpen(false);
     }
   };
 
@@ -334,7 +347,7 @@ export default function Home() {
                       <button className="flex-grow text-left truncate pr-2" onClick={() => handleLoadList(list.id)}>
                         {list.name}
                       </button>
-                      <Button variant="ghost" size="icon" className="h-6 w-6 flex-shrink-0" onClick={() => handleDeleteList(list.id)}>
+                      <Button variant="ghost" size="icon" className="h-6 w-6 flex-shrink-0" onClick={() => openDeleteDialog(list.id)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </DropdownMenuItem>
@@ -555,19 +568,36 @@ export default function Home() {
       </Dialog>
       
       <AlertDialog open={isReplaceConfirmOpen} onOpenChange={setIsReplaceConfirmOpen}>
-          <AlertDialogContent>
-              <AlertDialogHeader>
-                  <AlertDialogTitle>List name already exists</AlertDialogTitle>
-                  <AlertDialogDescription>
-                      A list named "{listToReplaceOnConfirm?.name}" already exists. Would you like to replace it with your current to-do list?
-                  </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                  <AlertDialogCancel onClick={() => setListToReplaceOnConfirm(null)}>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleConfirmReplace}>Replace</AlertDialogAction>
-              </AlertDialogFooter>
-          </AlertDialogContent>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>List name already exists</AlertDialogTitle>
+            <AlertDialogDescription>
+              A list named "{listToReplaceOnConfirm?.name}" already exists. Would you like to replace it with your current to-do list?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setListToReplaceOnConfirm(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmReplace}>Replace</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+                This will permanently delete the list "{listToDelete?.name}". This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setListToDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
       </AlertDialog>
     </div>
   );
 }
+
+    
