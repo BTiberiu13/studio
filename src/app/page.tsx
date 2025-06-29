@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { handleSearch } from "@/app/actions";
+import { handleSearch, type SearchActionInput } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
 import type { Attraction, ItineraryItem } from "@/types";
 
@@ -39,7 +39,7 @@ export default function Home() {
     }
   }, [toast]);
 
-  const onSearch = async (data: { location: string; timeframe: string; interests?: string }) => {
+  const onSearch = async (data: SearchActionInput) => {
     setIsLoading(true);
     setSearchResults([]);
     setSelectedCategory("All");

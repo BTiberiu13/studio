@@ -1,14 +1,21 @@
+
 "use server";
 
 import { deepSearchAttractions, type DeepSearchAttractionsInput } from "@/ai/flows/deep-search";
 import type { Attraction } from "@/types";
 import { z } from "zod";
+import { format } from "date-fns";
 
 const formSchema = z.object({
   location: z.string().min(1, "Location is required.").max(100),
-  timeframe: z.string().min(1, "Timeframe is required.").max(50),
+  timeframe: z.object({
+    from: z.date({ required_error: "A start date is required." }),
+    to: z.date({ required_error: "An end date is required." }),
+  }),
   interests: z.string().max(200).optional(),
 });
+
+export type SearchActionInput = z.infer<typeof formSchema>;
 
 type SearchResult = {
   data?: {
@@ -17,7 +24,7 @@ type SearchResult = {
   error?: string;
 }
 
-export async function handleSearch(data: DeepSearchAttractionsInput): Promise<SearchResult> {
+export async function handleSearch(data: SearchActionInput): Promise<SearchResult> {
   const validation = formSchema.safeParse(data);
   if (!validation.success) {
     const errorMessages = validation.error.errors.map(e => e.message).join(' ');
@@ -25,10 +32,19 @@ export async function handleSearch(data: DeepSearchAttractionsInput): Promise<Se
   }
 
   try {
-    const results = await deepSearchAttractions(validation.data);
+    const { location, timeframe, interests } = validation.data;
+    const timeframeString = `${format(timeframe.from, "PPP")} - ${format(timeframe.to, "PPP")}`;
+    
+    const aiInput: DeepSearchAttractionsInput = {
+        location,
+        timeframe: timeframeString,
+        interests,
+    };
+
+    const results = await deepSearchAttractions(aiInput);
     return { data: results };
   } catch (error) {
-    console.error("Deep search flow failed:", error);
+    console.error("Deep search failed:", error);
     return { error: "An AI error occurred. Please try again later." };
   }
 }

@@ -1,18 +1,30 @@
+
 "use client";
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { format } from "date-fns";
+import { CalendarIcon, Loader2, Search } from "lucide-react";
+
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Loader2, Search } from "lucide-react";
 
 const formSchema = z.object({
   location: z.string().min(1, "Location is required.").max(100),
-  timeframe: z.string().min(1, "Timeframe is required.").max(50),
+  timeframe: z.object({
+    from: z.date({ required_error: "A start date is required." }),
+    to: z.date({ required_error: "An end date is required." }),
+  }, {
+    required_error: "A date range is required.",
+    invalid_type_error: "A complete date range is required.",
+  }),
   interests: z.string().max(200).optional(),
 });
 
@@ -26,7 +38,10 @@ export function SearchForm({ onSearch, isLoading }: SearchFormProps) {
     resolver: zodResolver(formSchema),
     defaultValues: {
       location: "Kyoto, Japan",
-      timeframe: "Next spring",
+      timeframe: {
+        from: new Date(),
+        to: new Date(new Date().setDate(new Date().getDate() + 7)),
+      },
       interests: "Temples, traditional gardens, and local cuisine",
     },
   });
@@ -59,11 +74,45 @@ export function SearchForm({ onSearch, isLoading }: SearchFormProps) {
               control={form.control}
               name="timeframe"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="flex flex-col">
                   <FormLabel>Timeframe</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g., This weekend, next July" {...field} />
-                  </FormControl>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant={"outline"}
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !field.value?.from && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {field.value?.from ? (
+                            field.value.to ? (
+                              <>
+                                {format(field.value.from, "PPP")} -{" "}
+                                {format(field.value.to, "PPP")}
+                              </>
+                            ) : (
+                              format(field.value.from, "PPP")
+                            )
+                          ) : (
+                            <span>Pick a date range</span>
+                          )}
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        initialFocus
+                        mode="range"
+                        defaultMonth={field.value?.from}
+                        selected={field.value}
+                        onSelect={field.onChange}
+                        numberOfMonths={2}
+                      />
+                    </PopoverContent>
+                  </Popover>
                   <FormMessage />
                 </FormItem>
               )}
@@ -76,7 +125,7 @@ export function SearchForm({ onSearch, isLoading }: SearchFormProps) {
                   <FormLabel>Interests (optional)</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="e.g., history, outdoor activities, macarons"
+                      placeholder="e.g., history, a"
                       className="resize-none"
                       {...field}
                     />
