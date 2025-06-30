@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview A flow that generates an optimized daily itinerary from a list of activities.
@@ -52,7 +53,12 @@ const prompt = ai.definePrompt({
 
 **Constraints & Rules:**
 1.  **Geographical Optimization:** Group activities for each day based on their proximity to minimize travel time. Use the provided addresses to make logical groupings.
-2.  **Temporal Optimization:** Allocate a reasonable amount of time for each activity. Provide estimated start and end times for each. Be realistic about travel between locations.
+2.  **Temporal & Business Hours Optimization:**
+    - Allocate a reasonable amount of time for each activity and be realistic about travel time between locations.
+    - **Crucially, you must schedule activities during their typical business hours.**
+    - **Museums, shops, and attractions:** Assume they operate during standard daytime hours (e.g., 9:00 AM - 6:00 PM).
+    - **Restaurants:** Schedule for conventional meal times like lunch or dinner.
+    - **Bars & Nightlife:** These venues open late. **Never schedule a bar before 5:00 PM.**
 3.  **Restaurant Rule:** Include a maximum of ONE activity from the 'Restaurants' category per day.
 4.  **Bar Rule:** If an activity from the 'Bar' or 'Bars' category is included, it MUST be the last activity of that day. Include a maximum of ONE bar per day.
 5.  **Activity Pacing:** Distribute the activities evenly across the available days. Avoid making any single day too crowded or too empty.
