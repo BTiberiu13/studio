@@ -47,3 +47,15 @@ export type SavedItineraryData = GeneratedItinerary & {
     id: string;
     name: string;
 };
+
+export type Place = Attraction & {
+  placeId: string;
+  rating?: number;
+  userRatingsTotal?: number;
+  photoUrl?: string;
+  website?: string;
+  internationalPhoneNumber?: string;
+  openingHours?: string[];
+  searchLocation: string;
+  createdAt: string; // ISO date string
+};

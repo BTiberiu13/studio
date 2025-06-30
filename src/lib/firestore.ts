@@ -1,12 +1,15 @@
 
 import { db } from "./firebase";
-import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, getDoc, type DocumentReference } from "firebase/firestore";
-import type { SavedList, SavedListData, GeneratedItinerary, SavedItineraryData } from "@/types";
+import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, getDoc, type DocumentReference, setDoc } from "firebase/firestore";
+import type { SavedList, SavedListData, GeneratedItinerary, SavedItineraryData, Place } from "@/types";
 
 const LISTS_COLLECTION = "lists";
 const ITINERARIES_COLLECTION = "itineraries";
+const PLACES_COLLECTION = "places";
 const FIREBASE_NOT_CONFIGURED_ERROR = "Firebase is not configured. Please add your Firebase credentials to the .env file.";
 
+// Export Place type for use in other files
+export type { Place };
 
 // Get all saved lists for a user
 export async function getSavedLists(userId: string): Promise<SavedListData[]> {
@@ -76,14 +79,10 @@ export async function deleteList(userId: string, listId: string) {
 // Save a new itinerary
 export async function saveItinerary(userId: string, name: string, itineraryData: GeneratedItinerary): Promise<DocumentReference> {
     if (!db) throw new Error(FIREBASE_NOT_CONFIGURED_ERROR);
-
-    // The itineraryData should already be a plain JSON object from the AI flow.
-    // We just need to structure it with the name for saving.
     const dataToSave = {
         name: name,
-        dailyPlans: itineraryData.dailyPlans,
+        ...JSON.parse(JSON.stringify(itineraryData)),
     };
-
     const itinerariesRef = collection(db, "users", userId, ITINERARIES_COLLECTION);
     return await addDoc(itinerariesRef, dataToSave);
 }
@@ -126,4 +125,12 @@ export async function getSavedItinerary(userId: string, itineraryId: string): Pr
     } else {
         return null;
     }
+}
+
+// Save a place with its details
+export async function savePlace(placeData: Place) {
+  if (!db) throw new Error(FIREBASE_NOT_CONFIGURED_ERROR);
+  // Use placeId as the document ID to avoid duplicates
+  const placeRef = doc(db, PLACES_COLLECTION, placeData.placeId);
+  return await setDoc(placeRef, placeData, { merge: true }); // Use set with merge to create or update
 }
