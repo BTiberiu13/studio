@@ -52,6 +52,7 @@ export default function Home() {
   const [selectedListToReplace, setSelectedListToReplace] = useState("");
   const [saveDialogActiveTab, setSaveDialogActiveTab] = useState("new");
   const { toast } = useToast();
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   const handleReset = () => {
     setSearchResults([]);
@@ -65,6 +66,7 @@ export default function Home() {
   };
 
   useEffect(() => {
+    // This effect runs once on mount to load the initial state from localStorage.
     try {
       const currentStateData = localStorage.getItem("wanderTestCurrentState");
       if (currentStateData) {
@@ -74,16 +76,24 @@ export default function Home() {
       }
     } catch (error) {
       console.error("Failed to load data from localStorage", error);
+    } finally {
+      // We set isInitialLoad to false after the first attempt to load,
+      // which enables the saving effect.
+      setIsInitialLoad(false);
     }
-  }, []);
+  }, []); // Empty dependency array ensures this runs only once on mount.
 
   useEffect(() => {
-    try {
-      localStorage.setItem("wanderTestCurrentState", JSON.stringify({ itinerary, searchResults }));
-    } catch (error) {
-      console.error("Failed to save current state to localStorage", error);
+    // This effect saves the state to localStorage, but skips the very first render
+    // to avoid overwriting the state loaded from the list page.
+    if (!isInitialLoad) {
+      try {
+        localStorage.setItem("wanderTestCurrentState", JSON.stringify({ itinerary, searchResults }));
+      } catch (error) {
+        console.error("Failed to save current state to localStorage", error);
+      }
     }
-  }, [itinerary, searchResults]);
+  }, [itinerary, searchResults, isInitialLoad]);
 
   useEffect(() => {
     if (user) {
