@@ -77,7 +77,8 @@ export async function deleteList(userId: string, listId: string) {
 export async function saveItinerary(userId: string, name: string, itineraryData: GeneratedItinerary) {
     if (!db) throw new Error(FIREBASE_NOT_CONFIGURED_ERROR);
     const itinerariesRef = collection(db, "users", userId, ITINERARIES_COLLECTION);
-    return await addDoc(itinerariesRef, { name, ...itineraryData });
+    const plainItineraryData = JSON.parse(JSON.stringify(itineraryData));
+    return await addDoc(itinerariesRef, { name, ...plainItineraryData });
 }
 
 // Get all saved itineraries for a user
