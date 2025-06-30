@@ -394,117 +394,95 @@ export default function Home() {
             </h1>
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
-             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="secondary" disabled={!user && !isFetchingItineraries}>
-                  <CalendarCheck />
-                  My Itineraries
-                  {user && <Badge className="ml-2">{savedItineraries.length}</Badge>}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-64">
-                <DropdownMenuLabel>Your Itineraries</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {isFetchingItineraries ? (
-                  <div className="p-2 space-y-2">
-                    <Skeleton className="h-8 w-full" />
-                  </div>
-                ) : savedItineraries.length > 0 ? (
-                  savedItineraries.map(itinerary => (
-                    <DropdownMenuItem key={itinerary.id} className="flex justify-between items-center" onSelect={(e) => e.preventDefault()}>
-                      <span className="flex-grow text-left truncate cursor-pointer" onClick={() => router.push(`/itinerary/${itinerary.id}`)}>
-                        {itinerary.name}
-                      </span>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 flex-shrink-0"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openItineraryDeleteDialog(itinerary.id);
-                        }}
-                        title="Delete Itinerary"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuItem>
-                  ))
-                ) : (
-                  <DropdownMenuItem disabled>No saved itineraries yet.</DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="secondary" disabled={!user && !isFetchingLists} onClick={() => { if (!user) setIsAuthDialogOpen(true)}}>
-                  <BookMarked />
-                  My Saved Lists
-                  {user && <Badge className="ml-2">{savedLists.length}</Badge>}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-64">
-                <DropdownMenuLabel>Your Lists</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {isFetchingLists ? (
-                  <div className="p-2 space-y-2">
-                    <Skeleton className="h-8 w-full" />
-                    <Skeleton className="h-8 w-full" />
-                  </div>
-                ) : savedLists.length > 0 ? (
-                  savedLists.map(list => (
-                    <DropdownMenuItem key={list.id} className="flex justify-between items-center" onSelect={(e) => e.preventDefault()}>
-                      <span className="flex-grow text-left truncate cursor-pointer" onClick={() => router.push(`/list/${list.id}`)}>
-                        {list.name}
-                      </span>
-                       <div className="flex items-center">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 flex-shrink-0"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleLoadList(list.id);
-                          }}
-                          title="Edit List"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 flex-shrink-0"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openDeleteDialog(list.id);
-                          }}
-                          title="Delete List"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </DropdownMenuItem>
-                  ))
-                ) : (
-                  <DropdownMenuItem disabled>No saved lists yet.</DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-
             {user ? (
                <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="secondary" size="icon" className="rounded-full">
+                  <Button variant="secondary" size="icon" className="rounded-full relative">
                     <UserIcon />
+                    {(savedLists.length > 0 || savedItineraries.length > 0) &&
+                      <Badge variant="destructive" className="absolute -top-1 -right-1 h-4 w-4 justify-center p-0">{savedLists.length + savedItineraries.length}</Badge>
+                    }
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuContent align="end" className="w-64">
                   <DropdownMenuLabel className="font-normal">
                     <div className="flex flex-col space-y-1">
                       <p className="text-sm font-medium leading-none">Signed in as</p>
                       <p className="text-xs leading-none text-muted-foreground truncate">{user.email}</p>
                     </div>
                   </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel>My Itineraries</DropdownMenuLabel>
+                   {isFetchingItineraries ? (
+                      <div className="p-2 space-y-2">
+                        <Skeleton className="h-8 w-full" />
+                      </div>
+                    ) : savedItineraries.length > 0 ? (
+                      savedItineraries.map(itinerary => (
+                        <DropdownMenuItem key={itinerary.id} className="flex justify-between items-center" onSelect={(e) => e.preventDefault()}>
+                          <span className="flex-grow text-left truncate cursor-pointer" onClick={() => router.push(`/itinerary/${itinerary.id}`)}>
+                            {itinerary.name}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 flex-shrink-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openItineraryDeleteDialog(itinerary.id);
+                            }}
+                            title="Delete Itinerary"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuItem>
+                      ))
+                    ) : (
+                      <DropdownMenuItem disabled>No saved itineraries.</DropdownMenuItem>
+                    )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel>My Saved Lists</DropdownMenuLabel>
+                   {isFetchingLists ? (
+                      <div className="p-2 space-y-2">
+                        <Skeleton className="h-8 w-full" />
+                      </div>
+                    ) : savedLists.length > 0 ? (
+                      savedLists.map(list => (
+                        <DropdownMenuItem key={list.id} className="flex justify-between items-center" onSelect={(e) => e.preventDefault()}>
+                          <span className="flex-grow text-left truncate cursor-pointer" onClick={() => router.push(`/list/${list.id}`)}>
+                            {list.name}
+                          </span>
+                          <div className="flex items-center">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 flex-shrink-0"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleLoadList(list.id);
+                              }}
+                              title="Edit List"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 flex-shrink-0"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openDeleteDialog(list.id);
+                              }}
+                              title="Delete List"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </DropdownMenuItem>
+                      ))
+                    ) : (
+                      <DropdownMenuItem disabled>No saved lists.</DropdownMenuItem>
+                    )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleSignOut}>
                     <LogOut className="mr-2 h-4 w-4" />
