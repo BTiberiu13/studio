@@ -5,9 +5,9 @@ import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { handleSearch, type SearchActionInput } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
-import type { Attraction, ItineraryItem, SavedList, SavedListData } from "@/types";
+import type { Attraction, ItineraryItem, SavedList, SavedListData, SavedItineraryData } from "@/types";
 import { useAuth } from "@/context/auth-context";
-import { getSavedLists, saveList, deleteList as deleteListFromDB, updateList } from "@/lib/firestore";
+import { getSavedLists, saveList, deleteList as deleteListFromDB, updateList, getSavedItineraries } from "@/lib/firestore";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 
@@ -26,7 +26,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ClipboardList, Trash2, X, Pilcrow, Map, ListFilter, Lightbulb, Save, BookMarked, User as UserIcon, LogOut, Edit } from "lucide-react";
+import { ClipboardList, Trash2, X, Pilcrow, Map, ListFilter, Lightbulb, Save, BookMarked, User as UserIcon, LogOut, Edit, CalendarCheck } from "lucide-react";
 import { getCategoryIcon } from "@/lib/icons";
 
 export default function Home() {
@@ -36,6 +36,8 @@ export default function Home() {
   const [itinerary, setItinerary] = useState<ItineraryItem[]>([]);
   const [savedLists, setSavedLists] = useState<SavedListData[]>([]);
   const [isFetchingLists, setIsFetchingLists] = useState(false);
+  const [savedItineraries, setSavedItineraries] = useState<SavedItineraryData[]>([]);
+  const [isFetchingItineraries, setIsFetchingItineraries] = useState(false);
   
   const [isLoading, setIsLoading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
@@ -105,22 +107,24 @@ export default function Home() {
     if (user) {
       setIsFetchingLists(true);
       getSavedLists(user.uid)
-        .then(lists => {
-          setSavedLists(lists);
-        })
+        .then(lists => setSavedLists(lists))
         .catch(error => {
           console.error("Error fetching saved lists:", error);
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Could not fetch your saved lists.",
-          });
+          toast({ variant: "destructive", title: "Error", description: "Could not fetch your saved lists." });
         })
-        .finally(() => {
-          setIsFetchingLists(false);
-        });
+        .finally(() => setIsFetchingLists(false));
+
+      setIsFetchingItineraries(true);
+      getSavedItineraries(user.uid)
+        .then(itineraries => setSavedItineraries(itineraries))
+        .catch(error => {
+          console.error("Error fetching saved itineraries:", error);
+          toast({ variant: "destructive", title: "Error", description: "Could not fetch your saved itineraries." });
+        })
+        .finally(() => setIsFetchingItineraries(false));
     } else {
       setSavedLists([]);
+      setSavedItineraries([]);
     }
   }, [user, toast]);
 
@@ -343,6 +347,33 @@ export default function Home() {
             </h1>
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
+             <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="secondary" disabled={!user && !isFetchingItineraries}>
+                  <CalendarCheck />
+                  My Itineraries
+                  {user && <Badge className="ml-2">{savedItineraries.length}</Badge>}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-64">
+                <DropdownMenuLabel>Your Itineraries</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {isFetchingItineraries ? (
+                  <div className="p-2 space-y-2">
+                    <Skeleton className="h-8 w-full" />
+                  </div>
+                ) : savedItineraries.length > 0 ? (
+                  savedItineraries.map(itinerary => (
+                    <DropdownMenuItem key={itinerary.id} onSelect={() => router.push(`/itinerary/${itinerary.id}`)}>
+                      <span className="truncate">{itinerary.name}</span>
+                    </DropdownMenuItem>
+                  ))
+                ) : (
+                  <DropdownMenuItem disabled>No saved itineraries yet.</DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="secondary" disabled={!user && !isFetchingLists} onClick={() => { if (!user) setIsAuthDialogOpen(true)}}>
@@ -361,8 +392,10 @@ export default function Home() {
                   </div>
                 ) : savedLists.length > 0 ? (
                   savedLists.map(list => (
-                    <DropdownMenuItem key={list.id} className="flex justify-between items-center" onSelect={() => router.push(`/list/${list.id}`)}>
-                      <span className="flex-grow text-left truncate">{list.name}</span>
+                    <DropdownMenuItem key={list.id} className="flex justify-between items-center" onSelect={(e) => e.preventDefault()}>
+                      <span className="flex-grow text-left truncate cursor-pointer" onClick={() => router.push(`/list/${list.id}`)}>
+                        {list.name}
+                      </span>
                        <div className="flex items-center">
                         <Button
                           variant="ghost"

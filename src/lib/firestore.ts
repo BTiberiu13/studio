@@ -1,9 +1,10 @@
 
 import { db } from "./firebase";
 import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, getDoc } from "firebase/firestore";
-import type { SavedList, SavedListData } from "@/types";
+import type { SavedList, SavedListData, GeneratedItinerary, SavedItineraryData } from "@/types";
 
 const LISTS_COLLECTION = "lists";
+const ITINERARIES_COLLECTION = "itineraries";
 const FIREBASE_NOT_CONFIGURED_ERROR = "Firebase is not configured. Please add your Firebase credentials to the .env file.";
 
 
@@ -70,4 +71,50 @@ export async function deleteList(userId: string, listId: string) {
   if (!db) throw new Error(FIREBASE_NOT_CONFIGURED_ERROR);
   const listRef = doc(db, "users", userId, LISTS_COLLECTION, listId);
   return await deleteDoc(listRef);
+}
+
+// Save a new itinerary
+export async function saveItinerary(userId: string, name: string, itineraryData: GeneratedItinerary) {
+    if (!db) throw new Error(FIREBASE_NOT_CONFIGURED_ERROR);
+    const itinerariesRef = collection(db, "users", userId, ITINERARIES_COLLECTION);
+    return await addDoc(itinerariesRef, { name, ...itineraryData });
+}
+
+// Get all saved itineraries for a user
+export async function getSavedItineraries(userId: string): Promise<SavedItineraryData[]> {
+    if (!db) {
+        console.warn(FIREBASE_NOT_CONFIGURED_ERROR);
+        return [];
+    }
+    const itinerariesRef = collection(db, "users", userId, ITINERARIES_COLLECTION);
+    const querySnapshot = await getDocs(itinerariesRef);
+    return querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            id: doc.id,
+            name: data.name,
+            dailyPlans: data.dailyPlans || [],
+        };
+    });
+}
+
+// Get a single saved itinerary
+export async function getSavedItinerary(userId: string, itineraryId: string): Promise<SavedItineraryData | null> {
+    if (!db) {
+        console.warn(FIREBASE_NOT_CONFIGURED_ERROR);
+        return null;
+    }
+    const itineraryRef = doc(db, "users", userId, ITINERARIES_COLLECTION, itineraryId);
+    const docSnap = await getDoc(itineraryRef);
+
+    if (docSnap.exists()) {
+        const data = docSnap.data();
+        return {
+            id: docSnap.id,
+            name: data.name,
+            dailyPlans: data.dailyPlans || [],
+        };
+    } else {
+        return null;
+    }
 }

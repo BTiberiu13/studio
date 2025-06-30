@@ -42,3 +42,8 @@ export type DailyPlan = {
 export type GeneratedItinerary = {
   dailyPlans: DailyPlan[];
 };
+
+export type SavedItineraryData = GeneratedItinerary & {
+    id: string;
+    name: string;
+};
