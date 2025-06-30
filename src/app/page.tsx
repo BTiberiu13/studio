@@ -300,6 +300,15 @@ export default function Home() {
     }
   }
 
+  const handleLoadList = (list: SavedListData) => {
+    setSearchResults(list.searchResults);
+    setItinerary(list.itinerary);
+    toast({
+      title: `Loaded "${list.name}"`,
+      description: "Your list has been loaded for editing.",
+    });
+  };
+
   const categories = useMemo(() => {
     if (searchResults.length === 0) return [];
     const allCategories = searchResults.map(r => r.category);
@@ -340,11 +349,11 @@ export default function Home() {
                   </div>
                 ) : savedLists.length > 0 ? (
                   savedLists.map(list => (
-                    <DropdownMenuItem key={list.id} className="flex justify-between items-center" onSelect={(e) => e.preventDefault()}>
-                       <Link href={`/list/${list.id}`} className="flex-grow text-left truncate pr-2 no-underline text-current">
+                    <DropdownMenuItem key={list.id} className="flex justify-between items-center" onSelect={() => handleLoadList(list)}>
+                       <span className="flex-grow text-left truncate pr-2">
                         {list.name}
-                      </Link>
-                      <Button variant="ghost" size="icon" className="h-6 w-6 flex-shrink-0" onClick={() => openDeleteDialog(list.id)}>
+                      </span>
+                      <Button variant="ghost" size="icon" className="h-6 w-6 flex-shrink-0" onClick={(e) => { e.stopPropagation(); openDeleteDialog(list.id); }}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </DropdownMenuItem>
