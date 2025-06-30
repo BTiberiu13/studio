@@ -7,12 +7,10 @@ import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
 import { getSavedList } from '@/lib/firestore';
 import type { SavedListData, ItineraryItem } from '@/types';
-import { getCategoryIcon } from '@/lib/icons';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Edit, ClipboardList, MapPin } from 'lucide-react';
 
 export default function ListPage() {
@@ -89,14 +87,11 @@ export default function ListPage() {
                             <Skeleton className="h-6 w-3/4" />
                             <Skeleton className="h-4 w-1/2" />
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="pb-6">
                             <Skeleton className="h-4 w-full" />
                             <Skeleton className="h-4 w-full mt-2" />
                             <Skeleton className="h-4 w-5/6 mt-2" />
                         </CardContent>
-                        <CardFooter>
-                            <Skeleton className="h-6 w-24" />
-                        </CardFooter>
                     </Card>
                 ))}
             </div>
@@ -168,15 +163,9 @@ export default function ListPage() {
                         </CardDescription>
                         )}
                     </CardHeader>
-                    <CardContent className="flex-grow">
+                    <CardContent className="flex-grow pb-6">
                         <p className="text-foreground/80">{item.description}</p>
                     </CardContent>
-                    <CardFooter>
-                        <Badge variant="secondary" className="flex items-center gap-1.5 font-normal">
-                        {getCategoryIcon(item.category)}
-                        <span>{item.category}</span>
-                        </Badge>
-                    </CardFooter>
                 </Card>
             ))}
             </div>
