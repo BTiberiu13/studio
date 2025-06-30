@@ -77,34 +77,11 @@ export async function deleteList(userId: string, listId: string) {
 export async function saveItinerary(userId: string, name: string, itineraryData: GeneratedItinerary): Promise<DocumentReference> {
     if (!db) throw new Error(FIREBASE_NOT_CONFIGURED_ERROR);
 
-    // Manually create a plain JavaScript object to ensure it's serializable by Firestore.
-    // This avoids potential issues with class instances or metadata from Zod/Genkit.
+    // The itineraryData should already be a plain JSON object from the AI flow.
+    // We just need to structure it with the name for saving.
     const dataToSave = {
         name: name,
-        dailyPlans: itineraryData.dailyPlans.map(plan => ({
-            day: plan.day,
-            date: plan.date,
-            activities: plan.activities.map(activity => {
-                const plainActivity: {
-                    title: string;
-                    description: string;
-                    startTime: string;
-                    endTime: string;
-                    category: string;
-                    address?: string;
-                } = {
-                    title: activity.title,
-                    description: activity.description,
-                    startTime: activity.startTime,
-                    endTime: activity.endTime,
-                    category: activity.category,
-                };
-                if (activity.address) {
-                    plainActivity.address = activity.address;
-                }
-                return plainActivity;
-            })
-        }))
+        dailyPlans: itineraryData.dailyPlans,
     };
 
     const itinerariesRef = collection(db, "users", userId, ITINERARIES_COLLECTION);
