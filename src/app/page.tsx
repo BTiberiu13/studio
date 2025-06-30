@@ -2,7 +2,6 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import Link from "next/link";
 import { handleSearch, type SearchActionInput } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
 import type { Attraction, ItineraryItem, SavedList, SavedListData } from "@/types";
@@ -263,6 +262,18 @@ export default function Home() {
     }
   };
 
+  const handleLoadList = (listId: string) => {
+    const listToLoad = savedLists.find(l => l.id === listId);
+    if (listToLoad) {
+      setSearchResults(listToLoad.searchResults);
+      setItinerary(listToLoad.itinerary);
+      toast({
+        title: "List Loaded",
+        description: `"${listToLoad.name}" is now ready for editing.`,
+      });
+    }
+  };
+
   const openDeleteDialog = (listId: string) => {
     const list = savedLists.find(l => l.id === listId);
     if (list) {
@@ -315,12 +326,12 @@ export default function Home() {
     <div className="min-h-screen bg-background text-foreground font-body">
       <header className="bg-primary/95 text-primary-foreground shadow-lg backdrop-blur-sm sticky top-0 z-40">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
-          <Link href="/" onClick={handleReset} className="flex items-center gap-2 no-underline text-primary-foreground">
+          <div onClick={handleReset} className="flex items-center gap-2 no-underline text-primary-foreground cursor-pointer">
             <Map className="h-8 w-8" />
             <h1 className="text-2xl md:text-3xl font-bold font-headline">
               WanderTest
             </h1>
-          </Link>
+          </div>
           <div className="flex items-center gap-2 sm:gap-4">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -340,15 +351,16 @@ export default function Home() {
                   </div>
                 ) : savedLists.length > 0 ? (
                   savedLists.map(list => (
-                    <DropdownMenuItem key={list.id} className="flex justify-between items-center p-0" onSelect={(e) => e.preventDefault()}>
-                      <Link href={`/list/${list.id}`} className="flex-grow text-left truncate px-2 py-1.5">
-                        {list.name}
-                      </Link>
-                      <Button
+                    <DropdownMenuItem key={list.id} className="flex justify-between items-center" onSelect={() => handleLoadList(list.id)}>
+                      <span className="flex-grow text-left truncate">{list.name}</span>
+                       <Button
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 mr-1 flex-shrink-0"
-                        onClick={() => openDeleteDialog(list.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openDeleteDialog(list.id);
+                        }}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
