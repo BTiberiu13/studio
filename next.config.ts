@@ -16,6 +16,19 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'maps.googleapis.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'lh3.googleusercontent.com',
+      },
+    ],
+  },
+  experimental: {
+    allowedDevOrigins: [
+        "https://*.cluster-c23mj7ubf5fxwq6nrbev4ugaxa.cloudworkstations.dev"
     ],
   },
 };
