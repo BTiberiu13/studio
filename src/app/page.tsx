@@ -397,11 +397,8 @@ export default function Home() {
             {user ? (
                <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="secondary" size="icon" className="rounded-full relative">
+                  <Button variant="secondary" size="icon" className="rounded-full">
                     <UserIcon />
-                    {(savedLists.length > 0 || savedItineraries.length > 0) &&
-                      <Badge variant="destructive" className="absolute -top-1 -right-1 h-4 w-4 justify-center p-0">{savedLists.length + savedItineraries.length}</Badge>
-                    }
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-64">
@@ -412,7 +409,12 @@ export default function Home() {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuLabel>My Itineraries</DropdownMenuLabel>
+                  <DropdownMenuLabel className="flex justify-between items-center">
+                    <span>My Itineraries</span>
+                    {isFetchingItineraries ? <Skeleton className="h-5 w-5 rounded-full" /> : (savedItineraries.length > 0 &&
+                      <Badge variant="secondary">{savedItineraries.length}</Badge>
+                    )}
+                  </DropdownMenuLabel>
                    {isFetchingItineraries ? (
                       <div className="p-2 space-y-2">
                         <Skeleton className="h-8 w-full" />
@@ -441,7 +443,12 @@ export default function Home() {
                       <DropdownMenuItem disabled>No saved itineraries.</DropdownMenuItem>
                     )}
                   <DropdownMenuSeparator />
-                  <DropdownMenuLabel>My Saved Lists</DropdownMenuLabel>
+                  <DropdownMenuLabel className="flex justify-between items-center">
+                    <span>My Saved Lists</span>
+                    {isFetchingLists ? <Skeleton className="h-5 w-5 rounded-full" /> : (savedLists.length > 0 &&
+                      <Badge variant="secondary">{savedLists.length}</Badge>
+                    )}
+                  </DropdownMenuLabel>
                    {isFetchingLists ? (
                       <div className="p-2 space-y-2">
                         <Skeleton className="h-8 w-full" />
@@ -782,3 +789,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
