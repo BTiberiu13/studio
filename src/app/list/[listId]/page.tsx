@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useAuth } from '@/context/auth-context';
 import { getSavedList, saveItinerary } from '@/lib/firestore';
 import type { SavedListData, ItineraryItem, GeneratedItinerary } from '@/types';
@@ -13,10 +14,28 @@ import { handleGenerateItinerary } from '@/app/actions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Edit, ClipboardList, MapPin, Sparkles, Loader2, Clock, AlignLeft, RefreshCw, Save } from 'lucide-react';
+import { ArrowLeft, Edit, ClipboardList, MapPin, Sparkles, Loader2, Clock, AlignLeft, RefreshCw, Save, Star } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useToast } from '@/hooks/use-toast';
+
+const StarRating = ({ rating = 0 }: { rating?: number }) => {
+    const fullStars = Math.floor(rating);
+    const halfStar = rating % 1 >= 0.5 ? 1 : 0;
+    const emptyStars = 5 - fullStars - halfStar;
+  
+    return (
+      <div className="flex items-center gap-1 text-amber-500">
+        {[...Array(fullStars)].map((_, i) => (
+          <Star key={`full-${i}`} className="h-4 w-4 fill-current" />
+        ))}
+        {halfStar === 1 && <Star key="half" className="h-4 w-4 fill-current" />}
+        {[...Array(emptyStars)].map((_, i) => (
+          <Star key={`empty-${i}`} className="h-4 w-4 text-gray-300 fill-current" />
+        ))}
+      </div>
+    );
+};
 
 export default function ListPage() {
   const { user } = useAuth();
@@ -133,24 +152,23 @@ export default function ListPage() {
 
   const onSaveItinerary = async () => {
     if (!user || !generatedItinerary || !listData) return;
-
     setIsSaving(true);
     try {
-      const docRef = await saveItinerary(user.uid, listData.name, generatedItinerary);
-      toast({
-        title: "Itinerary Saved!",
-        description: `"${listData.name}" has been saved to your itineraries.`,
-      });
-      router.push(`/itinerary/${docRef.id}`);
+        const docRef = await saveItinerary(user.uid, listData.name, generatedItinerary);
+        toast({
+            title: "Itinerary Saved!",
+            description: `"${listData.name}" has been saved to your itineraries.`,
+        });
+        router.push(`/itinerary/${docRef.id}`);
     } catch (error) {
-      console.error("Itinerary saving failed:", error);
-      toast({
-        variant: "destructive",
-        title: "Save Failed",
-        description: "An error occurred while saving the itinerary. Please try again later.",
-      });
+        console.error("Itinerary saving failed:", error);
+        toast({
+            variant: "destructive",
+            title: "Save Failed",
+            description: "An error occurred while saving the itinerary. Please try again later.",
+        });
     } finally {
-      setIsSaving(false);
+        setIsSaving(false);
     }
   };
 
@@ -296,25 +314,33 @@ export default function ListPage() {
         ) : listData.itinerary.length > 0 ? (
           <div className="space-y-6">
             {listData.itinerary.map((item: ItineraryItem) => (
-                <Card key={item.id} className="flex flex-col overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 bg-card">
-                    <CardHeader>
-                        <CardTitle>{item.title}</CardTitle>
-                        {item.address && (
-                        <CardDescription className="flex items-center gap-1.5 pt-1 text-muted-foreground">
-                            <MapPin className="h-4 w-4 flex-shrink-0" />
-                            <span className="truncate">{item.address}</span>
-                        </CardDescription>
-                        )}
-                    </CardHeader>
-                    <CardContent className="flex-grow">
-                        <p className="text-foreground/80">{item.description}</p>
-                    </CardContent>
-                    <CardFooter>
-                       <Badge variant="secondary" className="flex items-center gap-1">
-                          {getCategoryIcon(item.category)}
-                          <span>{item.category}</span>
-                       </Badge>
-                    </CardFooter>
+                <Card key={item.id} className="flex flex-col md:flex-row overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 bg-card">
+                    {item.photoUrl && (
+                        <div className="md:w-1/3 relative h-48 md:h-auto">
+                            <Image src={item.photoUrl} alt={item.title} fill style={{ objectFit: 'cover' }} className="rounded-t-lg md:rounded-l-lg md:rounded-t-none" />
+                        </div>
+                    )}
+                    <div className="flex flex-col flex-grow p-6">
+                        <CardHeader className="p-0">
+                            <CardTitle>{item.title}</CardTitle>
+                            {item.address && (
+                            <CardDescription className="flex items-center gap-1.5 pt-1 text-muted-foreground">
+                                <MapPin className="h-4 w-4 flex-shrink-0" />
+                                <span className="truncate">{item.address}</span>
+                            </CardDescription>
+                            )}
+                        </CardHeader>
+                        <CardContent className="flex-grow p-0 pt-4">
+                            <p className="text-foreground/80">{item.description}</p>
+                            {item.rating && <div className="mt-2"><StarRating rating={item.rating} /></div>}
+                        </CardContent>
+                        <CardFooter className="p-0 pt-4">
+                           <Badge variant="secondary" className="flex items-center gap-1">
+                              {getCategoryIcon(item.category)}
+                              <span>{item.category}</span>
+                           </Badge>
+                        </CardFooter>
+                    </div>
                 </Card>
             ))}
             </div>

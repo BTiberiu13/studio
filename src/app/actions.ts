@@ -2,8 +2,9 @@
 "use server";
 
 import { deepSearchAttractions, type DeepSearchAttractionsInput } from "@/ai/flows/deep-search";
+import { generatePlaceRecommendations } from "@/ai/flows/generate-place-recommendations";
 import { generateItinerary, type GenerateItineraryInput, type GenerateItineraryOutput } from "@/ai/flows/generate-itinerary";
-import type { Attraction } from "@/types";
+import type { Place } from "@/types";
 import { z } from "zod";
 import { format } from "date-fns";
 
@@ -21,9 +22,7 @@ const formSchema = z.object({
 export type SearchActionInput = z.infer<typeof formSchema>;
 
 type SearchResult = {
-  data?: {
-    results: Attraction[];
-  };
+  data?: Place[];
   error?: string;
 }
 
@@ -44,10 +43,10 @@ export async function handleSearch(data: SearchActionInput): Promise<SearchResul
         travelStyle,
     };
 
-    const results = await deepSearchAttractions(aiInput);
+    const results = await generatePlaceRecommendations(aiInput);
     return { data: results };
   } catch (error) {
-    console.error("Deep search failed:", error);
+    console.error("Place recommendation search failed:", error);
     return { error: "An AI error occurred. Please try again later." };
   }
 }

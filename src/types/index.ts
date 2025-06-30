@@ -6,13 +6,29 @@ export type Attraction = {
   address?: string;
 };
 
-export type ItineraryItem = Attraction & {
-  id: string;
+export type Place = Attraction & {
+  placeId: string;
+  rating?: number;
+  userRatingsTotal?: number;
+  photoUrl?: string;
+  website?: string;
+  internationalPhoneNumber?: string;
+  openingHours?: {
+    open_now?: boolean;
+    periods?: any[];
+    weekday_text?: string[];
+  };
+  priceLevel?: number;
 };
+
+export type ItineraryItem = Place & {
+  id: string; // Unique ID for the to-do list
+};
+
 
 export type SavedList = {
   itinerary: ItineraryItem[];
-  searchResults: Attraction[];
+  searchResults: Place[];
   timeframe?: {
     from: string; // ISO date string
     to: string;   // ISO date string
@@ -46,16 +62,4 @@ export type GeneratedItinerary = {
 export type SavedItineraryData = GeneratedItinerary & {
     id: string;
     name: string;
-};
-
-export type Place = Attraction & {
-  placeId: string;
-  rating?: number;
-  userRatingsTotal?: number;
-  photoUrl?: string;
-  website?: string;
-  internationalPhoneNumber?: string;
-  openingHours?: string[];
-  searchLocation: string;
-  createdAt: string; // ISO date string
 };

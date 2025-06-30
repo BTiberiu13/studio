@@ -5,7 +5,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { handleSearch, type SearchActionInput } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
-import type { Attraction, ItineraryItem, SavedList, SavedListData, SavedItineraryData } from "@/types";
+import type { Place, ItineraryItem, SavedList, SavedListData, SavedItineraryData } from "@/types";
 import { useAuth } from "@/context/auth-context";
 import { getSavedLists, saveList, deleteList as deleteListFromDB, updateList, getSavedItineraries, deleteItinerary } from "@/lib/firestore";
 import { signOut } from "firebase/auth";
@@ -26,13 +26,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ClipboardList, Trash2, X, Pilcrow, Map, ListFilter, Lightbulb, Save, BookMarked, User as UserIcon, LogOut, Edit, CalendarCheck } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { ClipboardList, Trash2, X, Pilcrow, Map, ListFilter, Lightbulb, Save, BookMarked, User as UserIcon, LogOut, Edit, CalendarCheck, Star, DollarSign, Clock, Search as SearchIcon } from "lucide-react";
 import { getCategoryIcon } from "@/lib/icons";
 
 export default function Home() {
   const { user } = useAuth();
   const router = useRouter();
-  const [searchResults, setSearchResults] = useState<Attraction[]>([]);
+  const [searchResults, setSearchResults] = useState<Place[]>([]);
   const [itinerary, setItinerary] = useState<ItineraryItem[]>([]);
   const [savedLists, setSavedLists] = useState<SavedListData[]>([]);
   const [isFetchingLists, setIsFetchingLists] = useState(false);
@@ -40,13 +41,19 @@ export default function Home() {
   const [isFetchingItineraries, setIsFetchingItineraries] = useState(false);
   
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<string>("All");
-  
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
   const [isReplaceConfirmOpen, setIsReplaceConfirmOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [isItineraryDeleteConfirmOpen, setIsItineraryDeleteConfirmOpen] = useState(false);
+
+  // Filter state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("All");
+  const [minRating, setMinRating] = useState<number>(0);
+  const [priceLevel, setPriceLevel] = useState<number>(0);
+  const [openNow, setOpenNow] = useState<boolean>(false);
+  const [sortBy, setSortBy] = useState<string>("relevance");
 
   const [listToReplaceOnConfirm, setListToReplaceOnConfirm] = useState<{ id: string; name: string } | null>(null);
   const [listToDelete, setListToDelete] = useState<{ id: string; name: string } | null>(null);
@@ -147,8 +154,8 @@ export default function Home() {
         description: result.error,
       });
     } else if (result.data) {
-      setSearchResults(result.data.results);
-      if (result.data.results.length === 0) {
+      setSearchResults(result.data);
+      if (result.data.length === 0) {
         toast({
           title: "No results found",
           description: "Try broadening your search criteria.",
@@ -156,7 +163,7 @@ export default function Home() {
       } else {
         toast({
           title: "Search Complete!",
-          description: `Found ${result.data.results.length} amazing spots for you.`,
+          description: `Found ${result.data.length} amazing spots for you.`,
         });
       }
     }
@@ -166,12 +173,12 @@ export default function Home() {
     setItinerary(newItinerary);
   };
 
-  const addToItinerary = (item: Attraction) => {
-    if (itinerary.some(i => i.title === item.title)) {
+  const addToItinerary = (item: Place) => {
+    if (itinerary.some(i => i.placeId === item.placeId)) {
       toast({ title: "Already on to-do list", description: `${item.title} is already on your list.` });
       return;
     }
-    const newItineraryItem = { ...item, id: `${item.title}-${Date.now()}` };
+    const newItineraryItem: ItineraryItem = { ...item, id: `${item.placeId}-${Date.now()}` };
     updateItinerary([...itinerary, newItineraryItem]);
     toast({
       title: "Added to to-do list",
@@ -269,7 +276,6 @@ export default function Home() {
     }
   };
 
-
   const handleLoadList = (listId: string) => {
     const listToLoad = savedLists.find(l => l.id === listId);
     if (listToLoad) {
@@ -357,9 +363,25 @@ export default function Home() {
   }, [searchResults]);
 
   const filteredResults = useMemo(() => {
-    if (selectedCategory === "All") return searchResults;
-    return searchResults.filter(r => r.category === selectedCategory);
-  }, [searchResults, selectedCategory]);
+    return searchResults
+      .filter(place => {
+        if (selectedCategory !== "All" && place.category !== selectedCategory) return false;
+        if (searchQuery && !place.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+        if (minRating > 0 && (place.rating || 0) < minRating) return false;
+        if (priceLevel > 0 && (place.priceLevel || 0) > priceLevel) return false;
+        if (openNow && !place.openingHours?.open_now) return false;
+        return true;
+      })
+      .sort((a, b) => {
+        if (sortBy === 'rating') {
+          return (b.rating || 0) - (a.rating || 0);
+        }
+        if (sortBy === 'name') {
+          return a.title.localeCompare(b.title);
+        }
+        return 0; // 'relevance' - default order
+      });
+  }, [searchResults, selectedCategory, searchQuery, minRating, priceLevel, openNow, sortBy]);
 
   return (
     <div className="min-h-screen bg-background text-foreground font-body">
@@ -502,22 +524,75 @@ export default function Home() {
           <div className="lg:col-span-2 xl:col-span-3 space-y-8">
             <SearchForm onSearch={onSearch} isLoading={isLoading} initialTimeframe={currentTimeframe}/>
             
-            {categories.length > 0 && (
+            {searchResults.length > 0 && (
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2"><ListFilter /> Filter by Category</CardTitle>
+                  <CardTitle className="flex items-center gap-2"><ListFilter /> Filters & Sorting</CardTitle>
                 </CardHeader>
-                <CardContent className="flex flex-wrap gap-2">
-                  {categories.map(category => (
-                    <Button
-                      key={category}
-                      variant={selectedCategory === category ? "default" : "secondary"}
-                      onClick={() => setSelectedCategory(category)}
-                    >
-                      {getCategoryIcon(category)}
-                      {category}
-                    </Button>
-                  ))}
+                <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label>Category</Label>
+                    <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Filter by category..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories.map(category => (
+                          <SelectItem key={category} value={category}>{category}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                   <div className="space-y-2">
+                    <Label>Minimum Rating</Label>
+                    <Select value={String(minRating)} onValueChange={(v) => setMinRating(Number(v))}>
+                      <SelectTrigger><SelectValue placeholder="Any rating" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="0">Any Rating</SelectItem>
+                        <SelectItem value="4"><Star className="inline-block text-amber-500 fill-current" /> 4 Stars & Up</SelectItem>
+                        <SelectItem value="3"><Star className="inline-block text-amber-500 fill-current" /> 3 Stars & Up</SelectItem>
+                        <SelectItem value="2"><Star className="inline-block text-amber-500 fill-current" /> 2 Stars & Up</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Max Price</Label>
+                     <Select value={String(priceLevel)} onValueChange={(v) => setPriceLevel(Number(v))}>
+                      <SelectTrigger><SelectValue placeholder="Any price" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="0">Any Price</SelectItem>
+                        <SelectItem value="1"><DollarSign className="inline-block" /> Inexpensive</SelectItem>
+                        <SelectItem value="2"><DollarSign className="inline-block" /><DollarSign className="inline-block" /> Moderate</SelectItem>
+                        <SelectItem value="3"><DollarSign className="inline-block" /><DollarSign className="inline-block" /><DollarSign className="inline-block" /> Pricey</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Sort By</Label>
+                     <Select value={sortBy} onValueChange={setSortBy}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="relevance">Relevance</SelectItem>
+                        <SelectItem value="name">Name (A-Z)</SelectItem>
+                        <SelectItem value="rating">Rating (High-Low)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                   <div className="relative space-y-2">
+                      <Label htmlFor="search-filter">Search by name</Label>
+                      <Input
+                        id="search-filter"
+                        placeholder="Filter by name..."
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
+                        className="pr-8"
+                      />
+                      <SearchIcon className="absolute top-8 right-2.5 h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div className="flex items-center space-x-2 pt-8">
+                    <Switch id="open-now" checked={openNow} onCheckedChange={setOpenNow} />
+                    <Label htmlFor="open-now" className="flex items-center gap-2"><Clock /> Open Now</Label>
+                  </div>
                 </CardContent>
               </Card>
             )}
@@ -531,7 +606,11 @@ export default function Home() {
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                   {[...Array(6)].map((_, i) => (
                     <Card key={i}>
-                      <CardHeader><Skeleton className="h-6 w-3/4" /></CardHeader>
+                       <CardHeader>
+                        <Skeleton className="h-40 w-full mb-4" />
+                        <Skeleton className="h-6 w-3/4" />
+                        <Skeleton className="h-4 w-1/2" />
+                      </CardHeader>
                       <CardContent><Skeleton className="h-16 w-full" /></CardContent>
                       <CardFooter><Skeleton className="h-10 w-full" /></CardFooter>
                     </Card>
@@ -542,17 +621,17 @@ export default function Home() {
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 animate-in fade-in-50">
                   {filteredResults.map((item, index) => (
                     <AttractionCard
-                      key={`${item.title}-${index}`}
+                      key={`${item.placeId}-${index}`}
                       attraction={item}
                       onAddItem={addToItinerary}
-                      isAdded={itinerary.some(i => i.title === item.title)}
+                      isAdded={itinerary.some(i => i.placeId === item.placeId)}
                     />
                   ))}
                 </div>
               )}
               {!isLoading && searchResults.length > 0 && filteredResults.length === 0 && (
                  <div className="text-center py-16 text-muted-foreground">
-                    <p>No results for "{selectedCategory}". Try another category.</p>
+                    <p>No results match your current filters.</p>
                  </div>
               )}
                {!isLoading && searchResults.length === 0 && (
@@ -725,5 +804,3 @@ export default function Home() {
     </div>
   );
 }
-
-    
