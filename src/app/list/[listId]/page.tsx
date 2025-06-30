@@ -1,17 +1,19 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
-import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
 import { getSavedList } from '@/lib/firestore';
 import type { SavedListData, ItineraryItem } from '@/types';
+import { getCategoryIcon } from '@/lib/icons';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft, Edit, ClipboardList, MapPin } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 export default function ListPage() {
   const { user } = useAuth();
@@ -82,16 +84,18 @@ export default function ListPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {[...Array(6)].map((_, i) => (
                     <Card key={i}>
-                        <Skeleton className="h-56 w-full" />
                         <CardHeader>
                             <Skeleton className="h-6 w-3/4" />
                             <Skeleton className="h-4 w-1/2" />
                         </CardHeader>
-                        <CardContent className="pb-6">
+                        <CardContent>
                             <Skeleton className="h-4 w-full" />
                             <Skeleton className="h-4 w-full mt-2" />
                             <Skeleton className="h-4 w-5/6 mt-2" />
                         </CardContent>
+                        <CardFooter>
+                           <Skeleton className="h-6 w-24" />
+                        </CardFooter>
                     </Card>
                 ))}
             </div>
@@ -145,15 +149,6 @@ export default function ListPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {listData.itinerary.map((item: ItineraryItem) => (
                 <Card key={item.id} className="flex flex-col overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 bg-card">
-                    <div className="relative h-56 w-full">
-                        <Image
-                        src={`https://placehold.co/600x400.png`}
-                        alt={item.title}
-                        fill
-                        className="object-cover"
-                        data-ai-hint={item.category.toLowerCase().split(' ').slice(0, 2).join(' ')}
-                        />
-                    </div>
                     <CardHeader>
                         <CardTitle>{item.title}</CardTitle>
                         {item.address && (
@@ -163,9 +158,15 @@ export default function ListPage() {
                         </CardDescription>
                         )}
                     </CardHeader>
-                    <CardContent className="flex-grow pb-6">
+                    <CardContent className="flex-grow">
                         <p className="text-foreground/80">{item.description}</p>
                     </CardContent>
+                    <CardFooter>
+                       <Badge variant="secondary" className="flex items-center gap-1">
+                          {getCategoryIcon(item.category)}
+                          <span>{item.category}</span>
+                       </Badge>
+                    </CardFooter>
                 </Card>
             ))}
             </div>
