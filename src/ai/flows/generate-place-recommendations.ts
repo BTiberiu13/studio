@@ -6,14 +6,20 @@
  */
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import { deepSearchAttractions, DeepSearchAttractionsInput } from './deep-search';
+import { deepSearchAttractions, type DeepSearchAttractionsInput } from './deep-search';
 import { findPlace, getPlaceDetails, getPhotoUrl } from '@/services/google-places';
 import type { Place, Attraction } from '@/types';
+
+const DeepSearchAttractionsInputSchema = z.object({
+  location: z.string().describe('The location to search for attractions.'),
+  timeframe: z.string().describe('The timeframe for the search (e.g., "this weekend", "next month").'),
+  travelStyle: z.enum(["Relaxed", "Traveler", "Fanatic"]).describe("The user's travel style, which determines the number of suggestions."),
+});
 
 export const generatePlaceRecommendations = ai.defineFlow(
   {
     name: 'generatePlaceRecommendations',
-    inputSchema: DeepSearchAttractionsInput,
+    inputSchema: DeepSearchAttractionsInputSchema,
     outputSchema: z.array(z.custom<Place>()),
   },
   async (input) => {
@@ -57,7 +63,7 @@ export const generatePlaceRecommendations = ai.defineFlow(
             openingHours: details.opening_hours,
             priceLevel: details.price_level,
             photoUrl: details.photos?.[0]?.photo_reference
-              ? getPhotoUrl(details.photos[0].photo_reference, 800)
+              ? await getPhotoUrl(details.photos[0].photo_reference, 800)
               : undefined,
           };
           

@@ -67,7 +67,7 @@ export async function getPlaceDetails(placeId: string): Promise<PlaceDetailsResp
  * @param maxWidth The maximum width of the photo.
  * @returns The full URL of the photo.
  */
-export function getPhotoUrl(photoReference: string, maxWidth: number = 400): string {
+export async function getPhotoUrl(photoReference: string, maxWidth: number = 400): Promise<string> {
     if (!API_KEY) return "";
     return `https://maps.googleapis.com/maps/api/place/photo?maxwidth=${maxWidth}&photoreference=${photoReference}&key=${API_KEY}`;
 }
