@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
 import { getSavedList } from '@/lib/firestore';
@@ -18,8 +18,8 @@ import { ArrowLeft, Edit, ClipboardList } from 'lucide-react';
 export default function ListPage() {
   const { user } = useAuth();
   const router = useRouter();
-  const params = useParams();
-  const listId = params.listId as string;
+  const pathname = usePathname();
+  const listId = pathname.split('/').pop() || '';
 
   const [listData, setListData] = useState<SavedListData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
