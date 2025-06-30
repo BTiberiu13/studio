@@ -1,6 +1,6 @@
 
 import { db } from "./firebase";
-import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, where } from "firebase/firestore";
+import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, getDoc } from "firebase/firestore";
 import type { SavedList, SavedListData } from "@/types";
 
 const LISTS_COLLECTION = "lists";
@@ -18,10 +18,33 @@ export async function getSavedLists(userId: string): Promise<SavedListData[]> {
   return querySnapshot.docs.map(doc => ({
     id: doc.id,
     name: doc.data().name,
-    itinerary: doc.data().itinerary,
-    searchResults: doc.data().searchResults
+    itinerary: doc.data().itinerary || [],
+    searchResults: doc.data().searchResults || []
   }));
 }
+
+// Get a single saved list
+export async function getSavedList(userId: string, listId: string): Promise<SavedListData | null> {
+    if (!db) {
+      console.warn(FIREBASE_NOT_CONFIGURED_ERROR);
+      return null;
+    }
+    const listRef = doc(db, "users", userId, LISTS_COLLECTION, listId);
+    const docSnap = await getDoc(listRef);
+
+    if (docSnap.exists()) {
+        const data = docSnap.data();
+        return {
+            id: docSnap.id,
+            name: data.name,
+            itinerary: data.itinerary || [],
+            searchResults: data.searchResults || [],
+        };
+    } else {
+        return null;
+    }
+}
+
 
 // Save a new list
 export async function saveList(userId: string, listName: string, data: SavedList) {

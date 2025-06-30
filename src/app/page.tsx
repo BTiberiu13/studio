@@ -263,16 +263,6 @@ export default function Home() {
     }
   };
 
-  const handleLoadList = (listId: string) => {
-    const listToLoad = savedLists.find(l => l.id === listId);
-    if (listToLoad) {
-      setItinerary(listToLoad.itinerary);
-      setSearchResults(listToLoad.searchResults);
-      setSelectedCategory("All");
-      toast({ title: "List Loaded", description: `"${listToLoad.name}" is now your active to-do list.` });
-    }
-  };
-  
   const openDeleteDialog = (listId: string) => {
     const list = savedLists.find(l => l.id === listId);
     if (list) {
@@ -351,9 +341,9 @@ export default function Home() {
                 ) : savedLists.length > 0 ? (
                   savedLists.map(list => (
                     <DropdownMenuItem key={list.id} className="flex justify-between items-center" onSelect={(e) => e.preventDefault()}>
-                      <button className="flex-grow text-left truncate pr-2" onClick={() => handleLoadList(list.id)}>
+                       <Link href={`/list/${list.id}`} className="flex-grow text-left truncate pr-2 no-underline text-current">
                         {list.name}
-                      </button>
+                      </Link>
                       <Button variant="ghost" size="icon" className="h-6 w-6 flex-shrink-0" onClick={() => openDeleteDialog(list.id)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -606,5 +596,3 @@ export default function Home() {
     </div>
   );
 }
-
-    
