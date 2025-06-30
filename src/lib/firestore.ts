@@ -127,6 +127,13 @@ export async function getSavedItinerary(userId: string, itineraryId: string): Pr
     }
 }
 
+// Delete an itinerary
+export async function deleteItinerary(userId: string, itineraryId: string) {
+  if (!db) throw new Error(FIREBASE_NOT_CONFIGURED_ERROR);
+  const itineraryRef = doc(db, "users", userId, ITINERARIES_COLLECTION, itineraryId);
+  return await deleteDoc(itineraryRef);
+}
+
 // Save a place with its details
 export async function savePlace(placeData: Place) {
   if (!db) throw new Error(FIREBASE_NOT_CONFIGURED_ERROR);
@@ -134,3 +141,5 @@ export async function savePlace(placeData: Place) {
   const placeRef = doc(db, PLACES_COLLECTION, placeData.placeId);
   return await setDoc(placeRef, placeData, { merge: true }); // Use set with merge to create or update
 }
+
+    

@@ -7,7 +7,7 @@ import { handleSearch, type SearchActionInput } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
 import type { Attraction, ItineraryItem, SavedList, SavedListData, SavedItineraryData } from "@/types";
 import { useAuth } from "@/context/auth-context";
-import { getSavedLists, saveList, deleteList as deleteListFromDB, updateList, getSavedItineraries } from "@/lib/firestore";
+import { getSavedLists, saveList, deleteList as deleteListFromDB, updateList, getSavedItineraries, deleteItinerary } from "@/lib/firestore";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 
@@ -46,9 +46,11 @@ export default function Home() {
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
   const [isReplaceConfirmOpen, setIsReplaceConfirmOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [isItineraryDeleteConfirmOpen, setIsItineraryDeleteConfirmOpen] = useState(false);
 
   const [listToReplaceOnConfirm, setListToReplaceOnConfirm] = useState<{ id: string; name: string } | null>(null);
   const [listToDelete, setListToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [itineraryToDelete, setItineraryToDelete] = useState<{ id: string; name: string } | null>(null);
 
   const [newListName, setNewListName] = useState("");
   const [selectedListToReplace, setSelectedListToReplace] = useState("");
@@ -311,6 +313,29 @@ export default function Home() {
     }
   };
 
+  const openItineraryDeleteDialog = (itineraryId: string) => {
+    const itinerary = savedItineraries.find(i => i.id === itineraryId);
+    if (itinerary) {
+      setItineraryToDelete({ id: itinerary.id, name: itinerary.name });
+      setIsItineraryDeleteConfirmOpen(true);
+    }
+  };
+
+  const handleConfirmItineraryDelete = async () => {
+    if (!user || !itineraryToDelete) return;
+    try {
+      await deleteItinerary(user.uid, itineraryToDelete.id);
+      setSavedItineraries(prev => prev.filter(i => i.id !== itineraryToDelete.id));
+      toast({ title: "Itinerary Deleted", description: `"${itineraryToDelete.name}" has been deleted.` });
+    } catch (error) {
+      console.error("Error deleting itinerary:", error);
+      toast({ variant: "destructive", title: "Delete Failed", description: "Could not delete the itinerary." });
+    } finally {
+      setItineraryToDelete(null);
+      setIsItineraryDeleteConfirmOpen(false);
+    }
+  };
+
   const handleSignOut = async () => {
     if (!auth) {
         toast({ variant: "destructive", title: "Sign Out Failed", description: "Firebase is not configured." });
@@ -364,8 +389,22 @@ export default function Home() {
                   </div>
                 ) : savedItineraries.length > 0 ? (
                   savedItineraries.map(itinerary => (
-                    <DropdownMenuItem key={itinerary.id} onSelect={() => router.push(`/itinerary/${itinerary.id}`)}>
-                      <span className="truncate">{itinerary.name}</span>
+                    <DropdownMenuItem key={itinerary.id} className="flex justify-between items-center" onSelect={(e) => e.preventDefault()}>
+                      <span className="flex-grow text-left truncate cursor-pointer" onClick={() => router.push(`/itinerary/${itinerary.id}`)}>
+                        {itinerary.name}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 flex-shrink-0"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openItineraryDeleteDialog(itinerary.id);
+                        }}
+                        title="Delete Itinerary"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </DropdownMenuItem>
                   ))
                 ) : (
@@ -668,6 +707,23 @@ export default function Home() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={isItineraryDeleteConfirmOpen} onOpenChange={setIsItineraryDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+                This will permanently delete the itinerary "{itineraryToDelete?.name}". This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setItineraryToDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmItineraryDelete}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
+
+    
