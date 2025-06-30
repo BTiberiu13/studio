@@ -1,7 +1,7 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
@@ -10,10 +10,10 @@ import type { SavedListData, ItineraryItem } from '@/types';
 import { getCategoryIcon } from '@/lib/icons';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Edit, ClipboardList } from 'lucide-react';
+import { ArrowLeft, Edit, ClipboardList, MapPin } from 'lucide-react';
 
 export default function ListPage() {
   const { user } = useAuth();
@@ -68,14 +68,37 @@ export default function ListPage() {
        <div className="min-h-screen bg-background text-foreground font-body">
          <header className="bg-primary/95 text-primary-foreground shadow-lg backdrop-blur-sm sticky top-0 z-40">
             <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
-                <Skeleton className="h-10 w-36" />
-                <Skeleton className="h-8 w-48" />
-                <Skeleton className="h-10 w-28" />
+                <Button variant="ghost" asChild>
+                    <Link href="/" className="flex items-center gap-2">
+                        <ArrowLeft />
+                        Back to Search
+                    </Link>
+                </Button>
+                <Skeleton className="h-8 w-36" />
+                <Button onClick={handleEditList} variant="secondary" size="icon" title="Edit List" disabled>
+                    <Edit className="h-4 w-4"/>
+                </Button>
             </div>
         </header>
         <main className="container mx-auto p-4 sm:p-6 lg:p-8">
-            <div className="max-w-2xl mx-auto">
-                <Skeleton className="h-[60vh] w-full" />
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {[...Array(6)].map((_, i) => (
+                    <Card key={i}>
+                        <Skeleton className="h-56 w-full" />
+                        <CardHeader>
+                            <Skeleton className="h-6 w-3/4" />
+                            <Skeleton className="h-4 w-1/2" />
+                        </CardHeader>
+                        <CardContent>
+                            <Skeleton className="h-4 w-full" />
+                            <Skeleton className="h-4 w-full mt-2" />
+                            <Skeleton className="h-4 w-5/6 mt-2" />
+                        </CardContent>
+                        <CardFooter>
+                            <Skeleton className="h-6 w-24" />
+                        </CardFooter>
+                    </Card>
+                ))}
             </div>
         </main>
       </div>
@@ -123,36 +146,47 @@ export default function ListPage() {
             </div>
       </header>
       <main className="container mx-auto p-4 sm:p-6 lg:p-8">
-        <div className="max-w-2xl mx-auto">
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center justify-between">
-                    <span className="flex items-center gap-2"><ClipboardList /> To-Do List</span>
-                    <Badge>{listData.itinerary.length}</Badge>
-                    </CardTitle>
-                    <CardDescription>The items from your saved to-do list.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    {listData.itinerary.length > 0 ? (
-                    <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
-                        {listData.itinerary.map((item: ItineraryItem) => (
-                        <Card key={item.id} className="flex items-center p-3 gap-3">
-                            <div className="text-accent flex-shrink-0">{getCategoryIcon(item.category)}</div>
-                            <div className="flex-grow min-w-0">
-                            <p className="font-semibold truncate">{item.title}</p>
-                            <p className="text-sm text-muted-foreground">{item.category}</p>
-                            </div>
-                        </Card>
-                        ))}
+        {listData.itinerary.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {listData.itinerary.map((item: ItineraryItem) => (
+                <Card key={item.id} className="flex flex-col overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 bg-card">
+                    <div className="relative h-56 w-full">
+                        <Image
+                        src={`https://placehold.co/600x400.png`}
+                        alt={item.title}
+                        fill
+                        className="object-cover"
+                        data-ai-hint={item.category.toLowerCase().split(' ').slice(0, 2).join(' ')}
+                        />
                     </div>
-                    ) : (
-                    <div className="text-center py-10 text-muted-foreground border border-dashed rounded-lg">
-                        <p>Your to-do list was empty.</p>
-                    </div>
-                    )}
-                </CardContent>
-            </Card>
-        </div>
+                    <CardHeader>
+                        <CardTitle>{item.title}</CardTitle>
+                        {item.address && (
+                        <CardDescription className="flex items-center gap-1.5 pt-1 text-muted-foreground">
+                            <MapPin className="h-4 w-4 flex-shrink-0" />
+                            <span className="truncate">{item.address}</span>
+                        </CardDescription>
+                        )}
+                    </CardHeader>
+                    <CardContent className="flex-grow">
+                        <p className="text-foreground/80">{item.description}</p>
+                    </CardContent>
+                    <CardFooter>
+                        <Badge variant="secondary" className="flex items-center gap-1.5 font-normal">
+                        {getCategoryIcon(item.category)}
+                        <span>{item.category}</span>
+                        </Badge>
+                    </CardFooter>
+                </Card>
+            ))}
+            </div>
+        ) : (
+            <div className="text-center py-24 text-muted-foreground bg-card rounded-lg border border-dashed">
+                <ClipboardList className="mx-auto h-12 w-12" />
+                <h2 className="mt-4 text-xl font-semibold">Your to-do list is empty</h2>
+                <p className="mt-2">This saved list doesn't have any items in it yet.</p>
+            </div>
+        )}
       </main>
     </div>
   );
