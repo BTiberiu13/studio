@@ -1,6 +1,6 @@
 
 import { db } from "./firebase";
-import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, getDoc } from "firebase/firestore";
+import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, getDoc, type DocumentReference } from "firebase/firestore";
 import type { SavedList, SavedListData, GeneratedItinerary, SavedItineraryData } from "@/types";
 
 const LISTS_COLLECTION = "lists";
@@ -74,12 +74,43 @@ export async function deleteList(userId: string, listId: string) {
 }
 
 // Save a new itinerary
-export async function saveItinerary(userId: string, name: string, itineraryData: GeneratedItinerary) {
+export async function saveItinerary(userId: string, name: string, itineraryData: GeneratedItinerary): Promise<DocumentReference> {
     if (!db) throw new Error(FIREBASE_NOT_CONFIGURED_ERROR);
+
+    // Manually create a plain JavaScript object to ensure it's serializable by Firestore.
+    // This avoids potential issues with class instances or metadata from Zod/Genkit.
+    const dataToSave = {
+        name: name,
+        dailyPlans: itineraryData.dailyPlans.map(plan => ({
+            day: plan.day,
+            date: plan.date,
+            activities: plan.activities.map(activity => {
+                const plainActivity: {
+                    title: string;
+                    description: string;
+                    startTime: string;
+                    endTime: string;
+                    category: string;
+                    address?: string;
+                } = {
+                    title: activity.title,
+                    description: activity.description,
+                    startTime: activity.startTime,
+                    endTime: activity.endTime,
+                    category: activity.category,
+                };
+                if (activity.address) {
+                    plainActivity.address = activity.address;
+                }
+                return plainActivity;
+            })
+        }))
+    };
+
     const itinerariesRef = collection(db, "users", userId, ITINERARIES_COLLECTION);
-    const plainItineraryData = JSON.parse(JSON.stringify(itineraryData));
-    return await addDoc(itinerariesRef, { name, ...plainItineraryData });
+    return await addDoc(itinerariesRef, dataToSave);
 }
+
 
 // Get all saved itineraries for a user
 export async function getSavedItineraries(userId: string): Promise<SavedItineraryData[]> {
