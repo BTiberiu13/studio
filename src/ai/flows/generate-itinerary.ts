@@ -81,6 +81,8 @@ const generateItineraryFlow = ai.defineFlow(
   },
   async input => {
     const {output} = await prompt(input);
-    return output!;
+    // This ensures we return a plain JSON object, not a Zod-validated object with metadata,
+    // which makes it safe for Firestore.
+    return JSON.parse(JSON.stringify(output!));
   }
 );
