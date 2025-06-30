@@ -2,6 +2,7 @@
 "use server";
 
 import { deepSearchAttractions, type DeepSearchAttractionsInput } from "@/ai/flows/deep-search";
+import { generateItinerary, type GenerateItineraryInput, type GenerateItineraryOutput } from "@/ai/flows/generate-itinerary";
 import type { Attraction } from "@/types";
 import { z } from "zod";
 import { format } from "date-fns";
@@ -49,4 +50,19 @@ export async function handleSearch(data: SearchActionInput): Promise<SearchResul
     console.error("Deep search failed:", error);
     return { error: "An AI error occurred. Please try again later." };
   }
+}
+
+type GenerateItineraryResult = {
+    data?: GenerateItineraryOutput;
+    error?: string;
+}
+
+export async function handleGenerateItinerary(input: GenerateItineraryInput): Promise<GenerateItineraryResult> {
+    try {
+        const results = await generateItinerary(input);
+        return { data: results };
+    } catch (error) {
+        console.error("Itinerary generation failed:", error);
+        return { error: "An AI error occurred while generating the itinerary. Please try again later." };
+    }
 }

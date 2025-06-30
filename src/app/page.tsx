@@ -54,10 +54,13 @@ export default function Home() {
   const { toast } = useToast();
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
+  const [currentTimeframe, setCurrentTimeframe] = useState<{ from: Date; to: Date } | null>(null);
+
   const handleReset = () => {
     setSearchResults([]);
     setItinerary([]);
     setSelectedCategory("All");
+    setCurrentTimeframe(null);
     try {
       localStorage.removeItem("wanderTestCurrentState");
     } catch (error) {
@@ -66,34 +69,37 @@ export default function Home() {
   };
 
   useEffect(() => {
-    // This effect runs once on mount to load the initial state from localStorage.
     try {
       const currentStateData = localStorage.getItem("wanderTestCurrentState");
       if (currentStateData) {
-        const { itinerary, searchResults } = JSON.parse(currentStateData);
+        const { itinerary, searchResults, timeframe } = JSON.parse(currentStateData);
         setItinerary(itinerary || []);
         setSearchResults(searchResults || []);
+        if (timeframe && timeframe.from && timeframe.to) {
+            setCurrentTimeframe({ from: new Date(timeframe.from), to: new Date(timeframe.to) });
+        }
       }
     } catch (error) {
       console.error("Failed to load data from localStorage", error);
     } finally {
-      // We set isInitialLoad to false after the first attempt to load,
-      // which enables the saving effect.
       setIsInitialLoad(false);
     }
-  }, []); // Empty dependency array ensures this runs only once on mount.
+  }, []);
 
   useEffect(() => {
-    // This effect saves the state to localStorage, but skips the very first render
-    // to avoid overwriting the state loaded from the list page.
     if (!isInitialLoad) {
       try {
-        localStorage.setItem("wanderTestCurrentState", JSON.stringify({ itinerary, searchResults }));
+        const dataToSave = {
+            itinerary,
+            searchResults,
+            timeframe: currentTimeframe ? { from: currentTimeframe.from.toISOString(), to: currentTimeframe.to.toISOString() } : undefined
+        };
+        localStorage.setItem("wanderTestCurrentState", JSON.stringify(dataToSave));
       } catch (error) {
         console.error("Failed to save current state to localStorage", error);
       }
     }
-  }, [itinerary, searchResults, isInitialLoad]);
+  }, [itinerary, searchResults, currentTimeframe, isInitialLoad]);
 
   useEffect(() => {
     if (user) {
@@ -123,6 +129,8 @@ export default function Home() {
     setSearchResults([]);
     setItinerary([]);
     setSelectedCategory("All");
+    setCurrentTimeframe(data.timeframe);
+
     const result = await handleSearch(data);
     setIsLoading(false);
 
@@ -183,11 +191,44 @@ export default function Home() {
     });
   };
 
-  const handleSaveNewList = async () => {
+  const handleSaveList = async (listName: string, listId?: string) => {
     if (!user) {
-        setIsAuthDialogOpen(true);
-        return;
+      setIsAuthDialogOpen(true);
+      return;
+    }
+
+    const listData: SavedList = {
+      itinerary,
+      searchResults,
+      timeframe: currentTimeframe
+        ? {
+            from: currentTimeframe.from.toISOString(),
+            to: currentTimeframe.to.toISOString(),
+          }
+        : undefined,
     };
+
+    try {
+      if (listId) { // Update existing list
+        await updateList(user.uid, listId, listName, listData);
+        setSavedLists(prev => prev.map(l => (l.id === listId ? { ...l, name: listName, ...listData } : l)));
+        toast({ title: "List Updated", description: `List "${listName}" has been updated.` });
+      } else { // Save new list
+        const savedDoc = await saveList(user.uid, listName, listData);
+        setSavedLists(prev => [...prev, { id: savedDoc.id, name: listName, ...listData }]);
+        toast({ title: "List Saved!", description: `Your to-do list "${listName}" has been saved.` });
+      }
+
+      setIsSaveDialogOpen(false);
+      setNewListName("");
+      setSelectedListToReplace("");
+    } catch (error) {
+      console.error("Error saving/updating list:", error);
+      toast({ variant: "destructive", title: "Save Failed", description: "Could not save your list." });
+    }
+  };
+
+  const handleSaveNewList = async () => {
     const trimmedListName = newListName.trim();
     if (!trimmedListName) {
       toast({ variant: "destructive", title: "Invalid Name", description: "Please enter a name for your list." });
@@ -201,84 +242,41 @@ export default function Home() {
       return;
     }
 
-    const newList: SavedList = { itinerary, searchResults };
-    try {
-      const savedDoc = await saveList(user.uid, trimmedListName, newList);
-      setSavedLists(prev => [...prev, { id: savedDoc.id, name: trimmedListName, ...newList }]);
-      toast({ title: "List Saved!", description: `Your to-do list "${trimmedListName}" has been saved.` });
-      setIsSaveDialogOpen(false);
-      setNewListName("");
-    } catch (error) {
-      console.error("Error saving list:", error);
-      toast({ variant: "destructive", title: "Save Failed", description: "Could not save your list." });
-    }
+    await handleSaveList(trimmedListName);
   };
 
   const handleConfirmReplace = async () => {
-    if (!user || !listToReplaceOnConfirm) {
-      toast({ variant: "destructive", title: "Error", description: "No list selected for replacement." });
-      return;
-    }
-
-    const newListData: SavedList = { itinerary, searchResults };
-    try {
-      await updateList(user.uid, listToReplaceOnConfirm.id, listToReplaceOnConfirm.name, newListData);
-      
-      setSavedLists(prev => prev.map(l => 
-        l.id === listToReplaceOnConfirm.id 
-          ? { ...l, name: listToReplaceOnConfirm.name, ...newListData } 
-          : l
-      ));
-
-      toast({ title: "List Replaced", description: `List "${listToReplaceOnConfirm.name}" has been updated.` });
-      
-      setIsSaveDialogOpen(false);
-      setNewListName("");
-      setSelectedListToReplace("");
-    } catch (error) {
-      console.error("Error replacing list:", error);
-      toast({ variant: "destructive", title: "Update Failed", description: "Could not update the list." });
-    } finally {
-        setIsReplaceConfirmOpen(false);
-        setListToReplaceOnConfirm(null);
-    }
+    if (!listToReplaceOnConfirm) return;
+    await handleSaveList(listToReplaceOnConfirm.name, listToReplaceOnConfirm.id);
+    setIsReplaceConfirmOpen(false);
+    setListToReplaceOnConfirm(null);
   };
 
   const handleReplaceList = async () => {
-    if (!user) {
-        setIsAuthDialogOpen(true);
-        return;
-    }
     if (!selectedListToReplace) {
       toast({ variant: "destructive", title: "Selection Required", description: "Please select a list to replace." });
       return;
     }
     const listToUpdate = savedLists.find(l => l.id === selectedListToReplace);
-    if (!listToUpdate) {
-        toast({ variant: "destructive", title: "Error", description: "Could not find the selected list to replace." });
-        return;
-    }
-
-    const newListData: SavedList = { itinerary, searchResults };
-    try {
-      await updateList(user.uid, listToUpdate.id, listToUpdate.name, newListData);
-      setSavedLists(prev => prev.map(l => l.id === listToUpdate.id ? { ...l, ...newListData } : l));
-      toast({ title: "List Replaced", description: `List "${listToUpdate.name}" has been updated.` });
-      
-      setIsSaveDialogOpen(false);
-      setNewListName("");
-      setSelectedListToReplace("");
-    } catch (error) {
-      console.error("Error replacing list:", error);
-      toast({ variant: "destructive", title: "Update Failed", description: "Could not update the list." });
+    if (listToUpdate) {
+      await handleSaveList(listToUpdate.name, listToUpdate.id);
     }
   };
+
 
   const handleLoadList = (listId: string) => {
     const listToLoad = savedLists.find(l => l.id === listId);
     if (listToLoad) {
-      setSearchResults(listToLoad.searchResults);
-      setItinerary(listToLoad.itinerary);
+      setSearchResults(listToLoad.searchResults || []);
+      setItinerary(listToLoad.itinerary || []);
+      if (listToLoad.timeframe && listToLoad.timeframe.from && listToLoad.timeframe.to) {
+        setCurrentTimeframe({
+            from: new Date(listToLoad.timeframe.from),
+            to: new Date(listToLoad.timeframe.to),
+        });
+      } else {
+        setCurrentTimeframe(null);
+      }
       toast({
         title: "List Loaded",
         description: `"${listToLoad.name}" is now ready for editing.`,
@@ -430,7 +428,7 @@ export default function Home() {
       <main className="container mx-auto p-4 sm:p-6 lg:p-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-8 items-start">
           <div className="lg:col-span-2 xl:col-span-3 space-y-8">
-            <SearchForm onSearch={onSearch} isLoading={isLoading} />
+            <SearchForm onSearch={onSearch} isLoading={isLoading} initialTimeframe={currentTimeframe}/>
             
             {categories.length > 0 && (
               <Card>

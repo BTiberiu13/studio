@@ -15,12 +15,16 @@ export async function getSavedLists(userId: string): Promise<SavedListData[]> {
   }
   const listsRef = collection(db, "users", userId, LISTS_COLLECTION);
   const querySnapshot = await getDocs(listsRef);
-  return querySnapshot.docs.map(doc => ({
-    id: doc.id,
-    name: doc.data().name,
-    itinerary: doc.data().itinerary || [],
-    searchResults: doc.data().searchResults || []
-  }));
+  return querySnapshot.docs.map(doc => {
+    const data = doc.data();
+    return {
+        id: doc.id,
+        name: data.name,
+        itinerary: data.itinerary || [],
+        searchResults: data.searchResults || [],
+        timeframe: data.timeframe,
+    }
+  });
 }
 
 // Get a single saved list
@@ -39,6 +43,7 @@ export async function getSavedList(userId: string, listId: string): Promise<Save
             name: data.name,
             itinerary: data.itinerary || [],
             searchResults: data.searchResults || [],
+            timeframe: data.timeframe,
         };
     } else {
         return null;

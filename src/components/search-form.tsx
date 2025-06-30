@@ -1,6 +1,7 @@
 
 "use client";
 
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -33,9 +34,10 @@ const formSchema = z.object({
 type SearchFormProps = {
   onSearch: (values: z.infer<typeof formSchema>) => void;
   isLoading: boolean;
+  initialTimeframe?: { from: Date; to: Date } | null;
 };
 
-export function SearchForm({ onSearch, isLoading }: SearchFormProps) {
+export function SearchForm({ onSearch, isLoading, initialTimeframe }: SearchFormProps) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -47,6 +49,12 @@ export function SearchForm({ onSearch, isLoading }: SearchFormProps) {
       travelStyle: "Traveler",
     },
   });
+
+  useEffect(() => {
+    if (initialTimeframe) {
+      form.setValue('timeframe', initialTimeframe, { shouldValidate: true });
+    }
+  }, [initialTimeframe, form]);
 
   return (
     <Card>
