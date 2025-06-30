@@ -3,10 +3,9 @@
 
 import { deepSearchAttractions, type DeepSearchAttractionsInput } from "@/ai/flows/deep-search";
 import { generateItinerary, type GenerateItineraryInput, type GenerateItineraryOutput } from "@/ai/flows/generate-itinerary";
-import type { Attraction, GeneratedItinerary } from "@/types";
+import type { Attraction } from "@/types";
 import { z } from "zod";
 import { format } from "date-fns";
-import { saveItinerary } from "@/lib/firestore";
 
 const formSchema = z.object({
   location: z.string().min(1, "Location is required.").max(100),
@@ -65,26 +64,5 @@ export async function handleGenerateItinerary(input: GenerateItineraryInput): Pr
     } catch (error) {
         console.error("Itinerary generation failed:", error);
         return { error: "An AI error occurred while generating the itinerary. Please try again later." };
-    }
-}
-
-type SaveItineraryInput = {
-    userId: string;
-    name: string;
-    itinerary: GeneratedItinerary;
-};
-
-type SaveItineraryResult = {
-    data?: { id: string };
-    error?: string;
-}
-
-export async function handleSaveItinerary(input: SaveItineraryInput): Promise<SaveItineraryResult> {
-    try {
-        const docRef = await saveItinerary(input.userId, input.name, input.itinerary);
-        return { data: { id: docRef.id } };
-    } catch (error) {
-        console.error("Itinerary saving failed:", error);
-        return { error: "An error occurred while saving the itinerary. Please try again later." };
     }
 }

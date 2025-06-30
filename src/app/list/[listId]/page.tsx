@@ -5,10 +5,10 @@ import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
-import { getSavedList } from '@/lib/firestore';
+import { getSavedList, saveItinerary } from '@/lib/firestore';
 import type { SavedListData, ItineraryItem, GeneratedItinerary } from '@/types';
 import { getCategoryIcon } from '@/lib/icons';
-import { handleGenerateItinerary, handleSaveItinerary } from '@/app/actions';
+import { handleGenerateItinerary } from '@/app/actions';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -133,27 +133,24 @@ export default function ListPage() {
 
   const onSaveItinerary = async () => {
     if (!user || !generatedItinerary || !listData) return;
-    
-    setIsSaving(true);
-    const result = await handleSaveItinerary({
-        userId: user.uid,
-        name: listData.name,
-        itinerary: generatedItinerary,
-    });
-    setIsSaving(false);
 
-    if (result.error || !result.data) {
-        toast({
-            variant: "destructive",
-            title: "Save Failed",
-            description: result.error || "An unknown error occurred.",
-        });
-    } else {
-        toast({
-            title: "Itinerary Saved!",
-            description: `"${listData.name}" has been saved to your itineraries.`,
-        });
-        router.push(`/itinerary/${result.data.id}`);
+    setIsSaving(true);
+    try {
+      const docRef = await saveItinerary(user.uid, listData.name, generatedItinerary);
+      toast({
+        title: "Itinerary Saved!",
+        description: `"${listData.name}" has been saved to your itineraries.`,
+      });
+      router.push(`/itinerary/${docRef.id}`);
+    } catch (error) {
+      console.error("Itinerary saving failed:", error);
+      toast({
+        variant: "destructive",
+        title: "Save Failed",
+        description: "An error occurred while saving the itinerary. Please try again later.",
+      });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -180,23 +177,10 @@ export default function ListPage() {
             </div>
         </header>
         <main className="container mx-auto p-4 sm:p-6 lg:p-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {[...Array(6)].map((_, i) => (
-                    <Card key={i}>
-                        <CardHeader>
-                            <Skeleton className="h-6 w-3/4" />
-                            <Skeleton className="h-4 w-1/2" />
-                        </CardHeader>
-                        <CardContent>
-                            <Skeleton className="h-4 w-full" />
-                            <Skeleton className="h-4 w-full mt-2" />
-                            <Skeleton className="h-4 w-5/6 mt-2" />
-                        </CardContent>
-                        <CardFooter>
-                           <Skeleton className="h-6 w-24" />
-                        </CardFooter>
-                    </Card>
-                ))}
+             <div className="text-center py-24 text-muted-foreground">
+                <Loader2 className="mx-auto h-12 w-12 animate-spin" />
+                <h2 className="mt-4 text-xl font-semibold">Loading Your List...</h2>
+                <p className="mt-2">Just a moment while we fetch the details.</p>
             </div>
         </main>
       </div>
@@ -310,7 +294,7 @@ export default function ListPage() {
              </CardFooter>
            </Card>
         ) : listData.itinerary.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          <div className="space-y-6">
             {listData.itinerary.map((item: ItineraryItem) => (
                 <Card key={item.id} className="flex flex-col overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 bg-card">
                     <CardHeader>
