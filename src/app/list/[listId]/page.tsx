@@ -116,8 +116,8 @@ export default function ListPage() {
             <h1 className="text-xl md:text-2xl font-bold font-headline truncate px-4">
                 {listData.name}
             </h1>
-            <Button onClick={handleEditList}>
-                <Edit />
+            <Button onClick={handleEditList} className="gap-2">
+                <Edit className="h-4 w-4"/>
                 Edit List
             </Button>
             </div>
@@ -190,5 +190,3 @@ export default function ListPage() {
     </div>
   );
 }
-
-    

@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { handleSearch, type SearchActionInput } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
 import type { Attraction, ItineraryItem, SavedList, SavedListData } from "@/types";
@@ -25,11 +26,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ClipboardList, Trash2, X, Pilcrow, Map, ListFilter, Lightbulb, Save, BookMarked, User as UserIcon, LogOut } from "lucide-react";
+import { ClipboardList, Trash2, X, Pilcrow, Map, ListFilter, Lightbulb, Save, BookMarked, User as UserIcon, LogOut, Edit } from "lucide-react";
 import { getCategoryIcon } from "@/lib/icons";
 
 export default function Home() {
   const { user } = useAuth();
+  const router = useRouter();
   const [searchResults, setSearchResults] = useState<Attraction[]>([]);
   const [itinerary, setItinerary] = useState<ItineraryItem[]>([]);
   const [savedLists, setSavedLists] = useState<SavedListData[]>([]);
@@ -351,19 +353,34 @@ export default function Home() {
                   </div>
                 ) : savedLists.length > 0 ? (
                   savedLists.map(list => (
-                    <DropdownMenuItem key={list.id} className="flex justify-between items-center" onSelect={() => handleLoadList(list.id)}>
+                    <DropdownMenuItem key={list.id} className="flex justify-between items-center" onSelect={() => router.push(`/list/${list.id}`)}>
                       <span className="flex-grow text-left truncate">{list.name}</span>
-                       <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 mr-1 flex-shrink-0"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openDeleteDialog(list.id);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                       <div className="flex items-center">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 flex-shrink-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleLoadList(list.id);
+                          }}
+                          title="Edit List"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 flex-shrink-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openDeleteDialog(list.id);
+                          }}
+                          title="Delete List"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </DropdownMenuItem>
                   ))
                 ) : (
@@ -613,5 +630,3 @@ export default function Home() {
     </div>
   );
 }
-
-    
